@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   genders,
@@ -12,7 +13,10 @@ import {
 import { getCalendarEvents, type CalendarFilter } from "@/lib/events";
 import type { Gender } from "@/lib/database.types";
 import { AvailabilityLegend } from "@/components/calendar/availability";
-import { CalendarFilters, type FilterValues } from "@/components/calendar/filters";
+import {
+  CalendarFilters,
+  type FilterValues,
+} from "@/components/calendar/filters";
 import { ListView } from "@/components/calendar/list-view";
 import { MonthView } from "@/components/calendar/month-view";
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,9 @@ function href(values: FilterValues, overrides: Partial<FilterValues> = {}) {
 
 export default async function CalendarPage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
+  const session = await getSession();
+  const canCreate =
+    session?.organization?.status === "godkand" && session.profile.is_org_admin;
   const today = todayInStockholm();
   const view = single(params.vy) === "lista" ? "lista" : "manad";
   const month = parseMonth(single(params.manad)) ?? today.slice(0, 7);
@@ -72,29 +79,40 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
     <main className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Kalender</h1>
-        <div className="inline-flex rounded-md border p-0.5" role="tablist">
-          {(
-            [
-              ["manad", "Månad"],
-              ["lista", "Lista"],
-            ] as const
-          ).map(([v, label]) => (
-            <Link
-              key={v}
-              role="tab"
-              aria-selected={view === v}
-              href={href(values, {
-                vy: v,
-                manad: v === "manad" ? month : undefined,
-              })}
-              className={cn(
-                "rounded px-3 py-1 text-sm",
-                view === v ? "bg-primary text-primary-foreground" : "hover:bg-accent",
-              )}
-            >
-              {label}
-            </Link>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {canCreate && (
+            <Button asChild>
+              <Link href="/arrangor/nytt">
+                <Plus /> Nytt sammandrag
+              </Link>
+            </Button>
+          )}
+          <div className="inline-flex rounded-md border p-0.5" role="tablist">
+            {(
+              [
+                ["manad", "Månad"],
+                ["lista", "Lista"],
+              ] as const
+            ).map(([v, label]) => (
+              <Link
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                href={href(values, {
+                  vy: v,
+                  manad: v === "manad" ? month : undefined,
+                })}
+                className={cn(
+                  "rounded px-3 py-1 text-sm",
+                  view === v
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent",
+                )}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -107,12 +125,22 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {view === "manad" ? (
           <div className="flex items-center gap-1">
-            <Button asChild variant="outline" size="icon" aria-label="Föregående månad">
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              aria-label="Föregående månad"
+            >
               <Link href={href(values, { manad: shiftMonth(month, -1) })}>
                 <ChevronLeft />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="icon" aria-label="Nästa månad">
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              aria-label="Nästa månad"
+            >
               <Link href={href(values, { manad: shiftMonth(month, 1) })}>
                 <ChevronRight />
               </Link>
@@ -120,7 +148,9 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
             <h2 className="ml-2 text-lg font-medium">{monthLabel(month)}</h2>
             {month !== today.slice(0, 7) && (
               <Button asChild variant="ghost" size="sm" className="ml-1">
-                <Link href={href(values, { manad: today.slice(0, 7) })}>Idag</Link>
+                <Link href={href(values, { manad: today.slice(0, 7) })}>
+                  Idag
+                </Link>
               </Button>
             )}
           </div>
