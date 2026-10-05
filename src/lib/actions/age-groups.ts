@@ -6,6 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
 import type { FormState } from "@/lib/actions/auth";
 
+const MISSING_POLICY =
+  "Databasen tillåter inte ändringar av åldersgrupper ännu. Kör migreringen supabase/migrations/20261005020000_age_groups_admin.sql i Supabase → SQL Editor.";
+
+// Utan migreringen nekar RLS ändringen (42501), och en update/delete
+// påverkar då 0 rader utan fel.
+function isRlsDenied(error: { code?: string; message: string }) {
+  return error.code === "42501" || error.message.includes("row-level security");
+}
+
 function revalidate() {
   revalidatePath("/admin");
   revalidatePath("/");
@@ -32,13 +41,11 @@ export async function saveAgeGroup(
 
   if (error) {
     if (error.code === "23505") return { error: `Det finns redan en åldersgrupp som heter ${name}.` };
+    if (isRlsDenied(error)) return { error: MISSING_POLICY };
     return { error: friendlyError(error, "Kunde inte spara åldersgruppen") };
   }
   if (!data?.length) {
-    return {
-      error:
-        "Inget sparades. Kontrollera att migreringen för åldersgrupper är körd i Supabase.",
-    };
+    return { error: MISSING_POLICY };
   }
 
   revalidate();
@@ -56,13 +63,11 @@ export async function deleteAgeGroup(id: number): Promise<{ error?: string }> {
         error: "Åldersgruppen används i sammandrag och kan inte tas bort. Du kan döpa om den i stället.",
       };
     }
+    if (isRlsDenied(error)) return { error: MISSING_POLICY };
     return { error: friendlyError(error, "Kunde inte ta bort åldersgruppen") };
   }
   if (!data?.length) {
-    return {
-      error:
-        "Inget togs bort. Kontrollera att migreringen för åldersgrupper är körd i Supabase.",
-    };
+    return { error: MISSING_POLICY };
   }
 
   revalidate();
