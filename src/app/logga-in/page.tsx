@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Logga in – Sammandrag" };
+export const metadata = { title: "Logga in" };
 
 export default async function LoginPage({
   searchParams,

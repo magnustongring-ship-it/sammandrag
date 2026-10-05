@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayInStockholm } from "@/lib/calendar";
 import { EventForm } from "../event-form";
 
-export const metadata = { title: "Nytt sammandrag – Sammandrag" };
+export const metadata = { title: "Nytt sammandrag" };
 
 export default async function NewEventPage() {
   const session = await requireOrganizer();

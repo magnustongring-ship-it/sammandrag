@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireSiteAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { OrganizationStatus } from "@/lib/database.types";
+import { friendlyError } from "@/lib/errors";
 
 const allowed: OrganizationStatus[] = ["godkand", "avslagen", "vantar"];
 
@@ -21,7 +22,7 @@ export async function setOrganizationStatus(
     .eq("id", organizationId)
     .select("id");
 
-  if (error) throw new Error(`Kunde inte uppdatera föreningen: ${error.message}`);
+  if (error) throw new Error(friendlyError(error, "Kunde inte uppdatera föreningen"));
   if (!data?.length) throw new Error("Föreningen hittades inte.");
 
   revalidatePath("/admin");

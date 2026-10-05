@@ -171,7 +171,7 @@ export function EventForm({
           return (
             <div
               key={row.key}
-              className="grid grid-cols-[1fr_1fr_5.5rem_auto] items-end gap-2 rounded-lg border p-3"
+              className="grid grid-cols-2 items-end gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_5.5rem_auto]"
             >
               <div className="grid gap-1.5">
                 <Label htmlFor={`age-${row.key}`} className="text-xs">
@@ -237,12 +237,13 @@ export function EventForm({
                 variant="ghost"
                 size="icon"
                 aria-label={`Ta bort klass ${i + 1}`}
+                className="justify-self-end"
                 onClick={() => removeClass(row)}
               >
                 <Trash2 />
               </Button>
               {teams > 0 && (
-                <p className="col-span-4 text-xs text-muted-foreground">
+                <p className="col-span-full text-xs text-muted-foreground">
                   {teams} {teams === 1 ? "lag anmält" : "lag anmälda"} (inklusive väntelista)
                 </p>
               )}

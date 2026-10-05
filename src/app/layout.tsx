@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sammandrag",
+  title: { default: "Sammandrag", template: "%s – Sammandrag" },
   description: "Planera och anmäl lag till basketsammandrag",
 };
 

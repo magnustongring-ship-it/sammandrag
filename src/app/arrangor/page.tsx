@@ -6,8 +6,9 @@ import { formatDate, formatTimeRange, todayInStockholm } from "@/lib/calendar";
 import type { Tables } from "@/lib/database.types";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { Button } from "@/components/ui/button";
+import { friendlyError } from "@/lib/errors";
 
-export const metadata = { title: "Mina sammandrag – Sammandrag" };
+export const metadata = { title: "Mina sammandrag" };
 
 type Row = Pick<
   Tables<"events">,
@@ -54,7 +55,7 @@ export default async function OrganizerPage() {
 
       {error && (
         <p role="alert" className="text-sm text-destructive">
-          Kunde inte hämta sammandrag: {error.message}
+          {friendlyError(error, "Kunde inte hämta sammandrag")}
         </p>
       )}
 

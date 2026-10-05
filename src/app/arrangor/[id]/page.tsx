@@ -10,7 +10,7 @@ import { genderLabel } from "@/lib/calendar";
 import { EventForm } from "../event-form";
 import { Participants } from "./participants";
 
-export const metadata = { title: "Redigera sammandrag – Sammandrag" };
+export const metadata = { title: "Redigera sammandrag" };
 
 export default async function EditEventPage({
   params,

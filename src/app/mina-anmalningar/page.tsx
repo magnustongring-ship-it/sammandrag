@@ -7,8 +7,9 @@ import { isRegistrationOpen } from "@/lib/registration";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { RegistrationStatusBadge } from "@/components/registration-status-badge";
+import { friendlyError } from "@/lib/errors";
 
-export const metadata = { title: "Mina anmälningar – Sammandrag" };
+export const metadata = { title: "Mina anmälningar" };
 
 export default async function MyRegistrationsPage() {
   const session = await requireApprovedOrg();
@@ -41,7 +42,7 @@ export default async function MyRegistrationsPage() {
 
       {error && (
         <p role="alert" className="text-sm text-destructive">
-          Kunde inte hämta anmälningar: {error.message}
+          {friendlyError(error, "Kunde inte hämta anmälningar")}
         </p>
       )}
 

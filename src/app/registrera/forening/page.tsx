@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { OrganizationForm } from "./organization-form";
 
-export const metadata = { title: "Registrera förening – Sammandrag" };
+export const metadata = { title: "Registrera förening" };
 
 export default async function OrganizationPage() {
   const session = await requireUser();

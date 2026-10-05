@@ -9,6 +9,7 @@ import {
   PHONE_PATTERN,
   isRegistrationOpen,
 } from "@/lib/registration";
+import { friendlyError } from "@/lib/errors";
 
 export type RegisterValues = {
   classId: string;
@@ -76,10 +77,7 @@ export async function registerTeam(
     .single();
 
   if (error) {
-    // Fel från databasens regler (P0001) är redan på svenska.
-    return fail(
-      error.code === "P0001" ? error.message : `Kunde inte anmäla laget: ${error.message}`,
-    );
+    return fail(friendlyError(error, "Kunde inte anmäla laget"));
   }
 
   revalidatePath(`/sammandrag/${eventId}`);
@@ -107,14 +105,7 @@ export async function cancelRegistration(
     p_registration_id: registrationId,
   });
   if (error) {
-    if (error.code === "P0001") return { error: error.message };
-    if (error.code === "PGRST202") {
-      return {
-        error:
-          "Avanmälan är inte aktiverad i databasen ännu (migreringen för steg 6 saknas).",
-      };
-    }
-    return { error: `Kunde inte avanmäla: ${error.message}` };
+    return { error: friendlyError(error, "Kunde inte avanmäla laget") };
   }
 
   revalidatePath("/sammandrag/[id]", "page");

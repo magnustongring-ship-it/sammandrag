@@ -135,7 +135,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
-          Kunde inte hämta sammandrag. Försök igen om en stund. ({error})
+          {error}
         </p>
       ) : view === "manad" ? (
         <MonthView month={month} today={today} events={events} />

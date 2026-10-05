@@ -9,6 +9,7 @@ import { todayInStockholm } from "@/lib/calendar";
 import { validateEventForm, type EventFormValues } from "@/lib/event-form";
 import type { EventStatus, TablesInsert } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/auth";
+import { friendlyError } from "@/lib/errors";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -19,7 +20,7 @@ function dbError(error: PostgrestError): string {
   if (error.code === "42501") {
     return "Du har inte behörighet att ändra det här sammandraget.";
   }
-  return `Kunde inte spara: ${error.message}`;
+  return friendlyError(error, "Kunde inte spara");
 }
 
 function parseValues(formData: FormData): EventFormValues | null {

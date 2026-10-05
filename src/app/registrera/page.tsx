@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { SignupForm } from "./signup-form";
 
-export const metadata = { title: "Registrera – Sammandrag" };
+export const metadata = { title: "Registrera" };
 
 export default async function SignupPage() {
   const session = await getSession();

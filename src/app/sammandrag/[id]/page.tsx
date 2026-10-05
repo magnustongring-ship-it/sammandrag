@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps<"/sammandrag/[id]">
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase.from("events").select("title").eq("id", id).maybeSingle();
-  return { title: data ? `${data.title} – Sammandrag` : "Sammandrag" };
+  return { title: data?.title ?? "Sammandraget hittades inte" };
 }
 
 const longDate: Intl.DateTimeFormatOptions = {

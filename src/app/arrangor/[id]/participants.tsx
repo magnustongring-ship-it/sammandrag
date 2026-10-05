@@ -5,6 +5,7 @@ import type { RegistrationStatus } from "@/lib/database.types";
 import { ConfirmButton } from "@/components/confirm-button";
 import { CopyButton } from "@/components/copy-button";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 export type ParticipantClass = { id: string; label: string; max: number };
 
@@ -48,7 +49,7 @@ export async function Participants({ classes }: { classes: ParticipantClass[] })
   if (error) {
     return (
       <p role="alert" className="text-sm text-destructive">
-        Kunde inte hämta deltagarlistan: {error.message}
+        {friendlyError(error, "Kunde inte hämta deltagarlistan")}
       </p>
     );
   }
@@ -143,7 +144,7 @@ function TeamTable({ rows }: { rows: Registration[] }) {
             <th>Plats</th>
             <th>Lag</th>
             <th>Kontakt</th>
-            <th>Anmäld</th>
+            <th className="hidden sm:table-cell">Anmäld</th>
             <th>Åtgärd</th>
           </tr>
         </thead>
@@ -163,7 +164,7 @@ function TeamTable({ rows }: { rows: Registration[] }) {
                   {r.contact_phone}
                 </a>
               </td>
-              <td className="whitespace-nowrap py-2 pr-3 text-muted-foreground">
+              <td className="hidden whitespace-nowrap py-2 pr-3 text-muted-foreground sm:table-cell">
                 {timestamp.format(new Date(r.created_at))}
               </td>
               <td className="py-2 pr-3 text-right">

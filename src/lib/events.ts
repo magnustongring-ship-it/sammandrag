@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { EventStatus, Gender } from "@/lib/database.types";
+import { friendlyError } from "@/lib/errors";
 
 export type Availability = "lediga" | "fa-kvar" | "fullt" | "okant";
 
@@ -107,7 +108,9 @@ export async function getCalendarEvents(
   if (filter.city) query = query.ilike("city", `%${escapeLike(filter.city)}%`);
 
   const { data, error } = await query.overrideTypes<EventRow[], { merge: false }>();
-  if (error) return { events: [], error: error.message };
+  if (error) {
+    return { events: [], error: friendlyError(error, "Kunde inte hämta sammandrag") };
+  }
 
   const rows = data ?? [];
   const counts = new Map<string, number>();

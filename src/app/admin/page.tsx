@@ -5,8 +5,10 @@ import type { OrganizationStatus, Tables } from "@/lib/database.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { friendlyError } from "@/lib/errors";
+import { AgeGroups } from "./age-groups";
 
-export const metadata = { title: "Admin – Sammandrag" };
+export const metadata = { title: "Admin" };
 
 const statusLabel: Record<OrganizationStatus, string> = {
   vantar: "Väntar",
@@ -23,16 +25,16 @@ const dateFormat = new Intl.DateTimeFormat("sv-SE", {
 export default async function AdminPage() {
   await requireSiteAdmin();
   const supabase = await createClient();
-  const { data: organizations, error } = await supabase
-    .from("organizations")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: organizations, error }, { data: ageGroups }] = await Promise.all([
+    supabase.from("organizations").select("*").order("created_at", { ascending: false }),
+    supabase.from("age_groups").select("*").order("sort_order"),
+  ]);
 
   if (error) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-8">
         <p role="alert" className="text-destructive">
-          Kunde inte hämta föreningar: {error.message}
+          {friendlyError(error, "Kunde inte hämta föreningar")}
         </p>
       </main>
     );
@@ -78,6 +80,15 @@ export default async function AdminPage() {
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Åldersgrupper</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AgeGroups groups={ageGroups ?? []} />
         </CardContent>
       </Card>
     </main>

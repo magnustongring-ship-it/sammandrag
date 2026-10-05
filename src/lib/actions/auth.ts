@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, homePathFor } from "@/lib/auth";
+import { friendlyError } from "@/lib/errors";
 
 export type FormState = { error?: string; message?: string } | undefined;
 
@@ -26,7 +27,8 @@ function authErrorMessage(code: string | undefined, fallback: string): string {
     case "email_address_invalid":
       return "Ogiltig e-postadress.";
     default:
-      return `Något gick fel: ${fallback}`;
+      console.error("[auth]", code, fallback);
+      return "Något gick fel. Försök igen om en stund.";
   }
 }
 
@@ -122,7 +124,7 @@ export async function createOrganization(
     p_city: city,
     p_contact_email: contactEmail,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyError(error, "Kunde inte registrera föreningen") };
 
   // Spara namnet från registreringen på profilen (bara full_name får ändras).
   const {

@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export const metadata = { title: "Väntar på godkännande – Sammandrag" };
+export const metadata = { title: "Väntar på godkännande" };
 
 export default async function PendingPage() {
   const session = await requireUser();
