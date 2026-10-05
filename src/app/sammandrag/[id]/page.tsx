@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin, Users, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  FileText,
+  MapPin,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -141,7 +148,15 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
       </dl>
 
       {event.description && (
-        <p className="whitespace-pre-line text-sm leading-relaxed">{event.description}</p>
+        <section className="flex gap-3 rounded-xl border bg-card p-4 text-sm shadow-sm">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
+            <FileText className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-muted-foreground">Beskrivning</h2>
+            <p className="mt-1 whitespace-pre-line leading-relaxed">{event.description}</p>
+          </div>
+        </section>
       )}
 
       <section className="grid gap-2">
