@@ -1,0 +1,269 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { cancelRegistration } from "@/lib/actions/registrations";
+import {
+  formatDate,
+  formatTimeRange,
+  genderLabel,
+  todayInStockholm,
+} from "@/lib/calendar";
+import { isRegistrationOpen, lastRegistrationDay } from "@/lib/registration";
+import type { Tables } from "@/lib/database.types";
+import { ConfirmButton } from "@/components/confirm-button";
+import { EventStatusBadge } from "@/components/event-status-badge";
+import { RegistrationStatusBadge } from "@/components/registration-status-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { RegisterForm } from "./register-form";
+
+export async function generateMetadata({ params }: PageProps<"/sammandrag/[id]">) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase.from("events").select("title").eq("id", id).maybeSingle();
+  return { title: data ? `${data.title} – Sammandrag` : "Sammandrag" };
+}
+
+const longDate: Intl.DateTimeFormatOptions = {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+};
+
+export default async function EventPage({ params }: PageProps<"/sammandrag/[id]">) {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+
+  const supabase = await createClient();
+  const [session, { data: event }] = await Promise.all([
+    getSession(),
+    supabase
+      .from("events")
+      .select(
+        "*, organizations(name), event_classes(id, gender, max_teams, age_groups(name, sort_order))",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+  ]);
+  if (!event) notFound();
+
+  const classIds = event.event_classes.map((c) => c.id);
+  const myOrg = session?.organization;
+  const [{ data: counts }, { data: myRegs }] = await Promise.all([
+    supabase.rpc("event_class_counts", { p_event_ids: [id] }),
+    myOrg && classIds.length > 0
+      ? supabase
+          .from("registrations")
+          .select("*")
+          .eq("organization_id", myOrg.id)
+          .in("event_class_id", classIds)
+          .neq("status", "avanmald")
+          .order("created_at")
+      : Promise.resolve({ data: [] as Tables<"registrations">[] }),
+  ]);
+  const countById = new Map((counts ?? []).map((c) => [c.event_class_id, c]));
+  const countsKnown = counts !== null;
+
+  const classes = [...event.event_classes]
+    .sort(
+      (a, b) =>
+        (a.age_groups?.sort_order ?? 0) - (b.age_groups?.sort_order ?? 0) ||
+        a.gender.localeCompare(b.gender),
+    )
+    .map((c) => {
+      const count = countById.get(c.id);
+      const registered = countsKnown ? (count?.registered ?? 0) : null;
+      return {
+        id: c.id,
+        label: `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`,
+        max: c.max_teams,
+        registered,
+        waitlisted: countsKnown ? (count?.waitlisted ?? 0) : null,
+        free: registered === null ? null : Math.max(0, c.max_teams - registered),
+      };
+    });
+  const classLabel = new Map(classes.map((c) => [c.id, c.label]));
+
+  const today = todayInStockholm();
+  const open = isRegistrationOpen(event, today);
+  const isOrganizer =
+    myOrg?.id === event.organizer_org_id && session?.profile.is_org_admin;
+  const time = formatTimeRange(event.start_time, event.end_time);
+  const cancelled = event.status === "avbokad";
+
+  return (
+    <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
+      <div className="grid gap-2">
+        <Link href="/" className="text-sm text-muted-foreground hover:underline">
+          ← Kalendern
+        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className={cn("text-2xl font-semibold", cancelled && "line-through")}>
+            {event.title}
+          </h1>
+          {event.status !== "publicerad" && <EventStatusBadge status={event.status} />}
+          {isOrganizer && (
+            <Button asChild variant="outline" size="sm" className="ml-auto">
+              <Link href={`/arrangor/${event.id}`}>Redigera</Link>
+            </Button>
+          )}
+        </div>
+        {cancelled && (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
+            Sammandraget är avbokat av arrangören.
+          </p>
+        )}
+        {event.status === "utkast" && (
+          <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+            Det här är ett utkast och syns bara för din förening.
+          </p>
+        )}
+      </div>
+
+      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <Info label="Datum">
+          <span className="capitalize">{formatDate(event.event_date, longDate)}</span>
+          {time && `, ${time}`}
+        </Info>
+        <Info label="Plats">
+          {event.venue_name}
+          {event.address && <>, {event.address}</>}
+          {event.city && <>, {event.city}</>}
+        </Info>
+        <Info label="Arrangör">{event.organizations?.name ?? "–"}</Info>
+        <Info label="Sista anmälningsdag">
+          {formatDate(lastRegistrationDay(event), longDate)}
+        </Info>
+      </dl>
+
+      {event.description && (
+        <p className="whitespace-pre-line text-sm leading-relaxed">{event.description}</p>
+      )}
+
+      <section className="grid gap-2">
+        <h2 className="text-lg font-medium">Klasser</h2>
+        {classes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Inga klasser ännu.</p>
+        ) : (
+          <ul className="divide-y rounded-lg border">
+            {classes.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                <span className="font-medium">{c.label}</span>
+                <span className="flex items-center gap-3 text-sm">
+                  {c.registered === null ? (
+                    <span className="text-muted-foreground">Max {c.max} lag</span>
+                  ) : (
+                    <>
+                      <span
+                        className={cn(
+                          "tabular-nums",
+                          c.free === 0 && "font-medium text-red-700 dark:text-red-400",
+                        )}
+                      >
+                        {c.registered} av {c.max} platser fyllda
+                      </span>
+                      {!!c.waitlisted && (
+                        <span className="text-muted-foreground">
+                          {c.waitlisted} på väntelista
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {(myRegs ?? []).length > 0 && (
+        <section className="grid gap-2">
+          <h2 className="text-lg font-medium">Era anmälda lag</h2>
+          <ul className="divide-y rounded-lg border">
+            {myRegs!.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{r.team_name}</span>
+                    <RegistrationStatusBadge status={r.status} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {classLabel.get(r.event_class_id)} · {r.contact_email} ·{" "}
+                    {r.contact_phone}
+                  </p>
+                </div>
+                {open && (
+                  <ConfirmButton
+                    action={cancelRegistration.bind(null, r.id)}
+                    label="Avanmäl"
+                    confirmLabel="Ja, avanmäl"
+                    question={`Avanmäla ${r.team_name}? Platsen går till nästa lag på väntelistan.`}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Anmäl lag</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!open ? (
+            <p className="text-sm text-muted-foreground">
+              {cancelled
+                ? "Sammandraget är avbokat."
+                : event.status === "utkast"
+                  ? "Anmälan öppnar när sammandraget publiceras."
+                  : "Anmälan är stängd."}
+            </p>
+          ) : !session ? (
+            <p className="text-sm">
+              <Link href="/logga-in" className="font-medium underline">
+                Logga in
+              </Link>{" "}
+              för att anmäla lag. Ny förening?{" "}
+              <Link href="/registrera" className="font-medium underline">
+                Registrera er här
+              </Link>
+              .
+            </p>
+          ) : myOrg?.status !== "godkand" ? (
+            <p className="text-sm text-muted-foreground">
+              Din förening måste vara godkänd innan ni kan anmäla lag.
+            </p>
+          ) : classes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Arrangören har inte lagt till några klasser ännu.
+            </p>
+          ) : (
+            <RegisterForm
+              eventId={event.id}
+              classes={classes}
+              defaults={{
+                classId: classes.length === 1 ? classes[0].id : "",
+                teamName: "",
+                contactEmail: session.email ?? "",
+                contactPhone: "",
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function Info({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}

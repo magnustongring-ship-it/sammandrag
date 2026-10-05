@@ -256,6 +256,10 @@ export type Database = {
         Args: { p_name: string; p_city: string; p_contact_email: string };
         Returns: string;
       };
+      cancel_registration: {
+        Args: { p_registration_id: string };
+        Returns: undefined;
+      };
       event_class_counts: {
         Args: { p_event_ids: string[] };
         Returns: {
