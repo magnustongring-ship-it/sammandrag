@@ -84,6 +84,7 @@ export default async function EditEventPage({
 
       {event.status !== "utkast" && (
         <Participants
+          eventId={event.id}
           classes={sortedClasses.map((c) => ({
             id: c.id,
             label: `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`,

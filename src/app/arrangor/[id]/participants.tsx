@@ -4,6 +4,8 @@ import { TIME_ZONE } from "@/lib/calendar";
 import type { RegistrationStatus } from "@/lib/database.types";
 import { ConfirmButton } from "@/components/confirm-button";
 import { CopyButton } from "@/components/copy-button";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { friendlyError } from "@/lib/errors";
 
@@ -30,7 +32,13 @@ const timestamp = new Intl.DateTimeFormat("sv-SE", {
 
 // Deltagarlista per klass för arrangören. RLS (registrations_read) ger
 // arrangörens förening läsrätt till alla anmälningar i egna sammandrag.
-export async function Participants({ classes }: { classes: ParticipantClass[] }) {
+export async function Participants({
+  eventId,
+  classes,
+}: {
+  eventId: string;
+  classes: ParticipantClass[];
+}) {
   if (classes.length === 0) return null;
 
   const supabase = await createClient();
@@ -70,11 +78,18 @@ export async function Participants({ classes }: { classes: ParticipantClass[] })
             {active.length > total && `, ${active.length - total} på väntelista`}
           </p>
         </div>
-        {emails.length > 0 && (
-          <CopyButton
-            text={emails.join(", ")}
-            label={`Kopiera e-postadresser (${emails.length})`}
-          />
+        {regs.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <CopyButton
+              text={emails.join(", ")}
+              label={`Kopiera e-postadresser (${emails.length})`}
+            />
+            <Button asChild variant="outline" size="sm">
+              <a href={`/arrangor/${eventId}/deltagare.csv`} download>
+                <Download /> Exportera CSV
+              </a>
+            </Button>
+          </div>
         )}
       </div>
 

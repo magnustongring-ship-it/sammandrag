@@ -1,14 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { after } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { todayInStockholm } from "@/lib/calendar";
+import { genderLabel, todayInStockholm } from "@/lib/calendar";
 import {
   EMAIL_PATTERN,
   PHONE_PATTERN,
   isRegistrationOpen,
+  lastRegistrationDay,
 } from "@/lib/registration";
+import { sendEmail } from "@/lib/email";
+import { organizerEmail, registrantEmail } from "@/lib/email-templates";
 import { friendlyError } from "@/lib/errors";
 
 export type RegisterValues = {
@@ -54,7 +59,9 @@ export async function registerTeam(
   const supabase = await createClient();
   const { data: cls } = await supabase
     .from("event_classes")
-    .select("id, events(status, event_date, registration_deadline)")
+    .select(
+      "id, gender, age_groups(name), events(status, title, event_date, start_time, end_time, venue_name, city, registration_deadline, organizations(name, contact_email))",
+    )
     .eq("id", values.classId)
     .eq("event_id", eventId)
     .maybeSingle();
@@ -83,6 +90,44 @@ export async function registerTeam(
   revalidatePath(`/sammandrag/${eventId}`);
   revalidatePath("/mina-anmalningar");
   revalidatePath("/");
+
+  // Bekräftelsemejl skickas efter svaret så att anmälan aldrig väntar på dem.
+  const origin = (await headers()).get("origin") ?? "";
+  const ev = cls.events;
+  const mail = {
+    url: `${origin}/sammandrag/${eventId}`,
+    teamName: values.teamName,
+    clubName: session.organization.name,
+    classLabel: `${cls.age_groups?.name ?? "?"} ${genderLabel[cls.gender].toLowerCase()}`,
+    waitlisted: data.status === "vantelista",
+    contactEmail: values.contactEmail,
+    contactPhone: values.contactPhone,
+    event: {
+      title: ev.title,
+      date: ev.event_date,
+      startTime: ev.start_time,
+      endTime: ev.end_time,
+      venue: ev.venue_name,
+      city: ev.city,
+      lastDay: lastRegistrationDay(ev),
+      organizer: ev.organizations?.name ?? "",
+    },
+  };
+  const organizerAddress = ev.organizations?.contact_email;
+  after(async () => {
+    await sendEmail({
+      to: values.contactEmail,
+      replyTo: organizerAddress,
+      ...registrantEmail(mail),
+    });
+    if (organizerAddress) {
+      await sendEmail({
+        to: organizerAddress,
+        replyTo: values.contactEmail,
+        ...organizerEmail({ ...mail, url: `${origin}/arrangor/${eventId}` }),
+      });
+    }
+  });
 
   return {
     message:

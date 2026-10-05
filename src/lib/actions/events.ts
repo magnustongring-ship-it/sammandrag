@@ -8,7 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { todayInStockholm } from "@/lib/calendar";
 import { validateEventForm, type EventFormValues } from "@/lib/event-form";
 import type { EventStatus, TablesInsert } from "@/lib/database.types";
-import type { FormState } from "@/lib/actions/auth";
+import { overlaps, type Conflict } from "@/lib/conflicts";
+import { formatTimeRange } from "@/lib/calendar";
+
+export type EventFormState = { error?: string; conflicts?: Conflict[] } | undefined;
 import { friendlyError } from "@/lib/errors";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -65,6 +68,47 @@ async function classCounts(supabase: Supabase, eventId: string) {
   );
 }
 
+function slotKey(date: string, start: string, end: string, venue: string, city: string) {
+  return [date, start, end, venue.trim().toLowerCase(), city.trim().toLowerCase()].join("|");
+}
+
+/** Andra sammandrag samma dag i samma hall med överlappande tid. */
+async function findConflicts(
+  supabase: Supabase,
+  eventId: string | null,
+  values: EventFormValues,
+): Promise<Conflict[]> {
+  const { data } = await supabase
+    .from("events")
+    .select("id, title, start_time, end_time, venue_name, city, organizations(name)")
+    .eq("event_date", values.eventDate)
+    .neq("status", "avbokad");
+
+  const slot = {
+    venueName: values.venueName,
+    city: values.city || null,
+    startTime: values.startTime || null,
+    endTime: values.endTime || null,
+  };
+  return (data ?? [])
+    .filter(
+      (e) =>
+        e.id !== eventId &&
+        overlaps(slot, {
+          venueName: e.venue_name,
+          city: e.city,
+          startTime: e.start_time,
+          endTime: e.end_time,
+        }),
+    )
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      organizer: e.organizations?.name ?? null,
+      time: formatTimeRange(e.start_time, e.end_time),
+    }));
+}
+
 /**
  * Skapar (eventId = null) eller uppdaterar ett sammandrag med klasser.
  * intent: "utkast" sparar som utkast, "publicera" publicerar,
@@ -72,9 +116,9 @@ async function classCounts(supabase: Supabase, eventId: string) {
  */
 export async function saveEvent(
   eventId: string | null,
-  _prev: FormState,
+  _prev: EventFormState,
   formData: FormData,
-): Promise<FormState> {
+): Promise<EventFormState> {
   const session = await requireOrganizer();
   const supabase = await createClient();
   const values = parseValues(formData);
@@ -83,10 +127,13 @@ export async function saveEvent(
 
   let currentStatus: EventStatus = "utkast";
   let existingClassIds = new Set<string>();
+  let existingSlot: string | null = null;
   if (eventId) {
     const { data: event } = await supabase
       .from("events")
-      .select("status, organizer_org_id, event_classes(id)")
+      .select(
+        "status, organizer_org_id, event_date, start_time, end_time, venue_name, city, event_classes(id)",
+      )
       .eq("id", eventId)
       .single();
     if (!event || event.organizer_org_id !== session.organization.id) {
@@ -94,6 +141,13 @@ export async function saveEvent(
     }
     currentStatus = event.status;
     existingClassIds = new Set(event.event_classes.map((c) => c.id));
+    existingSlot = slotKey(
+      event.event_date,
+      event.start_time?.slice(0, 5) ?? "",
+      event.end_time?.slice(0, 5) ?? "",
+      event.venue_name,
+      event.city ?? "",
+    );
   }
 
   const status: EventStatus =
@@ -110,6 +164,26 @@ export async function saveEvent(
   });
   if (!result.ok) return { error: result.error };
   const classes = result.classes;
+
+  // Dubbelbokning: kontrollera när sammandraget publiceras, eller när ett
+  // publicerat sammandrag byter datum, tid eller hall.
+  const slotChanged =
+    existingSlot !==
+    slotKey(values.eventDate, values.startTime, values.endTime, values.venueName, values.city);
+  if (
+    status === "publicerad" &&
+    (currentStatus !== "publicerad" || slotChanged) &&
+    formData.get("confirm_conflict") !== "1"
+  ) {
+    const conflicts = await findConflicts(supabase, eventId, values);
+    if (conflicts.length > 0) {
+      return {
+        conflicts,
+        error:
+          "Hallen verkar redan vara bokad samma tid. Kontrollera, och kryssa i rutan för att spara ändå.",
+      };
+    }
+  }
 
   const fields = {
     title: values.title,

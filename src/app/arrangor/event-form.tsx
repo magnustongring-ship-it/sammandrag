@@ -294,6 +294,25 @@ export function EventForm({
         )}
       </fieldset>
 
+      {state?.conflicts && state.conflicts.length > 0 && (
+        <div className="grid gap-2 rounded-lg border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+          <p className="font-medium">Möjlig dubbelbokning av {values.venueName}</p>
+          <ul className="grid gap-1">
+            {state.conflicts.map((c) => (
+              <li key={c.id}>
+                {c.title}
+                {c.organizer && ` (${c.organizer})`}
+                {c.time ? `, ${c.time}` : ", hela dagen"}
+              </li>
+            ))}
+          </ul>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="confirm_conflict" value="1" className="mt-1" />
+            Jag har kontrollerat bokningen. Spara ändå.
+          </label>
+        </div>
+      )}
+
       <FormMessage state={state} />
 
       <div className="flex flex-wrap gap-2">
