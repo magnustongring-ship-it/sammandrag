@@ -110,15 +110,17 @@ async function findConflicts(
 }
 
 /**
- * Skapar (eventId = null) eller uppdaterar ett sammandrag med klasser.
+ * Skapar (utan event_id) eller uppdaterar ett sammandrag med klasser.
  * intent: "utkast" sparar som utkast, "publicera" publicerar,
  * "spara" behåller nuvarande status.
  */
 export async function saveEvent(
-  eventId: string | null,
   _prev: EventFormState,
   formData: FormData,
 ): Promise<EventFormState> {
+  // Id skickas som dolt fält i stället för .bind(): bundna actions med
+  // useActionState hänger i Next 16 när formuläret skickas utan JavaScript.
+  const eventId = String(formData.get("event_id") ?? "") || null;
   const session = await requireOrganizer();
   const supabase = await createClient();
   const values = parseValues(formData);

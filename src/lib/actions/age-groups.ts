@@ -20,12 +20,13 @@ function revalidate() {
   revalidatePath("/");
 }
 
-/** Skapar (utan id) eller uppdaterar en åldersgrupp. */
+/** Skapar (utan age_group_id) eller uppdaterar en åldersgrupp. */
 export async function saveAgeGroup(
-  id: number | null,
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  // Dolt fält i stället för .bind(), se saveEvent.
+  const id = Number(formData.get("age_group_id")) || null;
   await requireSiteAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const sortOrder = Number(formData.get("sort_order"));

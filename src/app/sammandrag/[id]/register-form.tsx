@@ -26,10 +26,7 @@ export function RegisterForm({
   classes: RegisterClassOption[];
   defaults: RegisterValues;
 }) {
-  const [state, action, pending] = useActionState(
-    registerTeam.bind(null, eventId),
-    undefined,
-  );
+  const [state, action, pending] = useActionState(registerTeam, undefined);
   // Kontrollerade fält, så att inget töms när servern svarar med ett fel.
   const [values, setValues] = useState<RegisterValues>(defaults);
   const [lastState, setLastState] = useState(state);
@@ -46,6 +43,7 @@ export function RegisterForm({
 
   return (
     <form action={action} className="grid gap-4">
+      <input type="hidden" name="event_id" value={eventId} />
       <div className="grid gap-2">
         <Label htmlFor="class_id">Klass</Label>
         <select

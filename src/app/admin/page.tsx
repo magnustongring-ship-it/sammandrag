@@ -113,14 +113,18 @@ function OrganizationRow({ org }: { org: Tables<"organizations"> }) {
       </div>
       <div className="flex gap-2">
         {org.status !== "godkand" && (
-          <form action={setOrganizationStatus.bind(null, org.id, "godkand")}>
+          <form action={setOrganizationStatus}>
+            <input type="hidden" name="organization_id" value={org.id} />
+            <input type="hidden" name="status" value="godkand" />
             <Button size="sm" type="submit">
               Godkänn
             </Button>
           </form>
         )}
         {org.status !== "avslagen" && (
-          <form action={setOrganizationStatus.bind(null, org.id, "avslagen")}>
+          <form action={setOrganizationStatus}>
+            <input type="hidden" name="organization_id" value={org.id} />
+            <input type="hidden" name="status" value="avslagen" />
             <Button size="sm" variant="outline" type="submit">
               Avslå
             </Button>

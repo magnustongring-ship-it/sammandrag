@@ -28,10 +28,11 @@ export type RegisterState =
   | undefined;
 
 export async function registerTeam(
-  eventId: string,
   _prev: RegisterState,
   formData: FormData,
 ): Promise<RegisterState> {
+  // Dolt fält i stället för .bind(), se saveEvent.
+  const eventId = String(formData.get("event_id") ?? "");
   const values: RegisterValues = {
     classId: String(formData.get("class_id") ?? ""),
     teamName: String(formData.get("team_name") ?? "").trim(),

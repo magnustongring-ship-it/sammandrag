@@ -8,10 +8,9 @@ import { friendlyError } from "@/lib/errors";
 
 const allowed: OrganizationStatus[] = ["godkand", "avslagen", "vantar"];
 
-export async function setOrganizationStatus(
-  organizationId: string,
-  status: OrganizationStatus,
-): Promise<void> {
+export async function setOrganizationStatus(formData: FormData): Promise<void> {
+  const organizationId = String(formData.get("organization_id") ?? "");
+  const status = String(formData.get("status") ?? "") as OrganizationStatus;
   await requireSiteAdmin();
   if (!allowed.includes(status)) throw new Error("Ogiltig status");
 

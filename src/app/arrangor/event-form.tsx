@@ -40,10 +40,7 @@ export function EventForm({
   teamCounts?: Record<string, number>;
   minDate?: string;
 }) {
-  const [state, action, pending] = useActionState(
-    saveEvent.bind(null, eventId),
-    undefined,
-  );
+  const [state, action, pending] = useActionState(saveEvent, undefined);
   const [values, setValues] = useState<EventFormValues>(() =>
     initial.classes.length > 0 ? initial : { ...initial, classes: [emptyClass("ny-0")] },
   );
@@ -76,6 +73,7 @@ export function EventForm({
   return (
     <form action={action} className="grid gap-6">
       <input type="hidden" name="values" value={JSON.stringify(values)} />
+      {eventId && <input type="hidden" name="event_id" value={eventId} />}
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-2 text-lg font-medium">Uppgifter</legend>

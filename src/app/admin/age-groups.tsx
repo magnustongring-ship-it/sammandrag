@@ -40,15 +40,13 @@ function AgeGroupRow({
   group: AgeGroup | null;
   defaultOrder?: number;
 }) {
-  const [state, action, pending] = useActionState(
-    saveAgeGroup.bind(null, group?.id ?? null),
-    undefined,
-  );
+  const [state, action, pending] = useActionState(saveAgeGroup, undefined);
 
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-start gap-2">
         <form action={action} className="flex flex-1 flex-wrap gap-2">
+          {group && <input type="hidden" name="age_group_id" value={group.id} />}
           <Input
             name="name"
             defaultValue={group?.name ?? ""}
