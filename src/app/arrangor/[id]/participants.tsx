@@ -99,8 +99,8 @@ export async function Participants({
         const waiting = inClass.filter((r) => r.status === "vantelista");
         const cancelled = inClass.filter((r) => r.status === "avanmald");
         return (
-          <div key={c.id} className="overflow-hidden rounded-lg border">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b bg-muted px-3 py-2">
+          <div key={c.id} className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b bg-secondary px-3 py-2 text-secondary-foreground">
               <h3 className="font-medium">{c.label}</h3>
               <span
                 className={cn(

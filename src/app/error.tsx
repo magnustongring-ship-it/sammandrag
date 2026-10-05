@@ -17,7 +17,7 @@ export default function Error({
 
   return (
     <main className="mx-auto grid w-full max-w-md gap-3 px-4 py-16 text-center">
-      <h1 className="text-2xl font-semibold">Något gick fel</h1>
+      <h1 className="text-3xl font-bold uppercase">Något gick fel</h1>
       <p className="text-sm text-muted-foreground">
         Sidan kunde inte visas. Försök igen, eller gå tillbaka till kalendern.
         {error.digest && (

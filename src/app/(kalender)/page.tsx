@@ -76,102 +76,140 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
   });
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Kalender</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {canCreate && (
-            <Button asChild>
+    <>
+      <section className="relative overflow-hidden bg-brand text-brand-foreground">
+        {/* Mittcirkel och mittlinje från en basketplan som dekor */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-28 top-1/2 flex size-80 -translate-y-1/2 items-center justify-center rounded-full border-[6px] border-ball/25"
+        >
+          <div className="size-28 rounded-full border-[6px] border-ball/25" />
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-[calc(3rem-3px)] w-[6px] bg-ball/25"
+        />
+        <div className="relative mx-auto flex w-full max-w-5xl flex-wrap items-end justify-between gap-4 px-4 py-8 sm:py-10">
+          <div className="max-w-xl">
+            <h1 className="text-4xl font-bold uppercase sm:text-5xl">
+              Basket&shy;sammandrag
+            </h1>
+            <p className="mt-2 text-brand-foreground/80">
+              Hitta sammandrag i kalendern och anmäl era lag. Arrangörer
+              planerar klasser och håller koll på anmälningarna.
+            </p>
+          </div>
+          {canCreate ? (
+            <Button asChild size="lg">
               <Link href="/arrangor/nytt">
                 <Plus /> Nytt sammandrag
               </Link>
             </Button>
+          ) : (
+            !session && (
+              <Button asChild size="lg">
+                <Link href="/registrera">Registrera din förening</Link>
+              </Button>
+            )
           )}
-          <div className="inline-flex rounded-md border p-0.5" role="tablist">
-            {(
-              [
-                ["manad", "Månad"],
-                ["lista", "Lista"],
-              ] as const
-            ).map(([v, label]) => (
-              <Link
-                key={v}
-                role="tab"
-                aria-selected={view === v}
-                href={href(values, {
-                  vy: v,
-                  manad: v === "manad" ? month : undefined,
-                })}
-                className={cn(
-                  "rounded px-3 py-1 text-sm",
-                  view === v
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent",
-                )}
-              >
-                {label}
-              </Link>
-            ))}
+        </div>
+      </section>
+
+      <main className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-2xl font-bold uppercase tracking-tight">
+            Kalender
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="inline-flex rounded-lg border bg-card p-0.5 shadow-xs"
+              role="tablist"
+            >
+              {(
+                [
+                  ["manad", "Månad"],
+                  ["lista", "Lista"],
+                ] as const
+              ).map(([v, label]) => (
+                <Link
+                  key={v}
+                  role="tab"
+                  aria-selected={view === v}
+                  href={href(values, {
+                    vy: v,
+                    manad: v === "manad" ? month : undefined,
+                  })}
+                  className={cn(
+                    "rounded-md px-3 py-1 text-sm font-medium",
+                    view === v
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent",
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <CalendarFilters
-        values={values}
-        ageGroups={ageGroups ?? []}
-        clearHref={href({ vy: view, manad: values.manad })}
-      />
+        <CalendarFilters
+          values={values}
+          ageGroups={ageGroups ?? []}
+          clearHref={href({ vy: view, manad: values.manad })}
+        />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {view === "manad" ? (
-          <div className="flex items-center gap-1">
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              aria-label="Föregående månad"
-            >
-              <Link href={href(values, { manad: shiftMonth(month, -1) })}>
-                <ChevronLeft />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              aria-label="Nästa månad"
-            >
-              <Link href={href(values, { manad: shiftMonth(month, 1) })}>
-                <ChevronRight />
-              </Link>
-            </Button>
-            <h2 className="ml-2 text-lg font-medium">{monthLabel(month)}</h2>
-            {month !== today.slice(0, 7) && (
-              <Button asChild variant="ghost" size="sm" className="ml-1">
-                <Link href={href(values, { manad: today.slice(0, 7) })}>
-                  Idag
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {view === "manad" ? (
+            <div className="flex items-center gap-1">
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                aria-label="Föregående månad"
+              >
+                <Link href={href(values, { manad: shiftMonth(month, -1) })}>
+                  <ChevronLeft />
                 </Link>
               </Button>
-            )}
-          </div>
-        ) : (
-          <h2 className="text-lg font-medium">Kommande sammandrag</h2>
-        )}
-        <AvailabilityLegend />
-      </div>
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                aria-label="Nästa månad"
+              >
+                <Link href={href(values, { manad: shiftMonth(month, 1) })}>
+                  <ChevronRight />
+                </Link>
+              </Button>
+              <h2 className="ml-2 text-lg font-medium">{monthLabel(month)}</h2>
+              {month !== today.slice(0, 7) && (
+                <Button asChild variant="ghost" size="sm" className="ml-1">
+                  <Link href={href(values, { manad: today.slice(0, 7) })}>
+                    Idag
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <h2 className="text-lg font-medium">Kommande sammandrag</h2>
+          )}
+          <AvailabilityLegend />
+        </div>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {error}
-        </p>
-      ) : view === "manad" ? (
-        <MonthView month={month} today={today} events={events} />
-      ) : (
-        <ListView events={events} />
-      )}
-    </main>
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        ) : view === "manad" ? (
+          <MonthView month={month} today={today} events={events} />
+        ) : (
+          <ListView events={events} />
+        )}
+      </main>
+    </>
   );
 }

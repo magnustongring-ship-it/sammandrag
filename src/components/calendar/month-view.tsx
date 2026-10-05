@@ -23,8 +23,8 @@ export function MonthView({
   return (
     <>
       {/* Rutnät på större skärmar */}
-      <div className="hidden overflow-hidden rounded-lg border sm:block">
-        <div className="grid grid-cols-7 border-b bg-muted text-xs font-medium text-muted-foreground">
+      <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm sm:block">
+        <div className="grid grid-cols-7 bg-brand text-xs font-semibold uppercase tracking-wide text-brand-foreground">
           {weekdayLabels.map((d) => (
             <div key={d} className="px-2 py-1.5 capitalize">
               {d}
@@ -32,15 +32,17 @@ export function MonthView({
           ))}
         </div>
         <div className="grid grid-cols-7">
-          {monthGrid(month).map((day) => {
+          {monthGrid(month).map((day, i) => {
             const inMonth = day.startsWith(month);
+            const weekend = i % 7 >= 5;
             const dayEvents = byDate.get(day) ?? [];
             return (
               <div
                 key={day}
                 className={cn(
                   "min-h-28 border-b border-r p-1.5 [&:nth-child(7n)]:border-r-0",
-                  !inMonth && "bg-muted/40 text-muted-foreground",
+                  weekend && "bg-accent/40",
+                  !inMonth && "bg-muted/60 text-muted-foreground",
                 )}
               >
                 <div
@@ -97,7 +99,7 @@ export function MonthView({
 
 function EmptyMonth() {
   return (
-    <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+    <p className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
       Inga sammandrag den här månaden.
     </p>
   );

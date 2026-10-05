@@ -20,7 +20,7 @@ export default async function NewEventPage() {
         <Link href="/arrangor" className="text-sm text-muted-foreground hover:underline">
           ← Mina sammandrag
         </Link>
-        <h1 className="text-2xl font-semibold">Nytt sammandrag</h1>
+        <h1 className="text-3xl font-bold uppercase">Nytt sammandrag</h1>
       </div>
       <EventForm
         eventId={null}

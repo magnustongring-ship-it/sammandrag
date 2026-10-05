@@ -3,6 +3,10 @@ import { getSession } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "@/components/mobile-menu";
+import { BallIcon } from "@/components/logo";
+
+const onDark =
+  "text-brand-foreground hover:bg-white/10 hover:text-brand-foreground";
 
 export async function SiteHeader() {
   const session = await getSession();
@@ -12,25 +16,43 @@ export async function SiteHeader() {
     ? [
         approved && { href: "/mina-anmalningar", label: "Mina anmälningar" },
         approved &&
-          session.profile.is_org_admin && { href: "/arrangor", label: "Mina sammandrag" },
+          session.profile.is_org_admin && {
+            href: "/arrangor",
+            label: "Mina sammandrag",
+          },
         session.profile.is_site_admin && { href: "/admin", label: "Admin" },
       ].filter((l): l is { href: string; label: string } => Boolean(l))
     : [];
 
   return (
-    <header className="border-b">
+    <header className="border-b-4 border-ball bg-brand text-brand-foreground">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">
-          Sammandrag
+        <Link
+          href="/"
+          className="flex items-center gap-2"
+          aria-label="Easy Basket planeraren, till kalendern"
+        >
+          <BallIcon className="size-9" />
+          <span className="flex flex-col font-display leading-none">
+            <span className="text-2xl font-bold uppercase tracking-wide">
+              Easy Basket
+            </span>
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-ball">
+              planeraren
+            </span>
+          </span>
         </Link>
 
         {!session ? (
           <nav className="flex items-center gap-2 text-sm">
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className={onDark}>
               <Link href="/logga-in">Logga in</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/registrera">Registrera förening</Link>
+              <Link href="/registrera">
+                Registrera
+                <span className="hidden sm:inline">&nbsp;förening</span>
+              </Link>
             </Button>
           </nav>
         ) : (
@@ -38,17 +60,28 @@ export async function SiteHeader() {
             {/* Dator och surfplatta */}
             <nav className="hidden items-center gap-1 text-sm md:flex">
               {session.organization && (
-                <span className="mr-2 text-muted-foreground">
+                <span className="mr-2 text-brand-foreground/70">
                   {session.organization.name}
                 </span>
               )}
               {links.map((l) => (
-                <Button key={l.href} asChild variant="ghost" size="sm">
+                <Button
+                  key={l.href}
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className={onDark}
+                >
                   <Link href={l.href}>{l.label}</Link>
                 </Button>
               ))}
               <form action={signOut} className="ml-1">
-                <Button variant="outline" size="sm" type="submit">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="submit"
+                  className="border-white/30 bg-transparent text-brand-foreground hover:bg-white/10 hover:text-brand-foreground"
+                >
                   Logga ut
                 </Button>
               </form>

@@ -43,7 +43,7 @@ export default async function OrganizerPage() {
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Mina sammandrag</h1>
+          <h1 className="text-3xl font-bold uppercase">Mina sammandrag</h1>
           <p className="text-sm text-muted-foreground">{session.organization.name}</p>
         </div>
         <Button asChild>
@@ -62,7 +62,7 @@ export default async function OrganizerPage() {
       <section className="grid gap-2">
         <h2 className="text-lg font-medium">Kommande</h2>
         {upcoming.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
             Ni har inga kommande sammandrag.{" "}
             <Link href="/arrangor/nytt" className="font-medium text-foreground underline">
               Skapa ett nytt
@@ -92,12 +92,12 @@ function EventList({
   teamsFor: (e: Row) => number;
 }) {
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="divide-y rounded-xl border bg-card shadow-sm">
       {events.map((e) => (
         <li key={e.id}>
           <Link
             href={`/arrangor/${e.id}`}
-            className="flex flex-wrap items-center justify-between gap-2 p-4 hover:bg-accent"
+            className="flex flex-wrap items-center justify-between gap-2 p-4 hover:bg-accent/60"
           >
             <div className="min-w-0">
               <p className="font-medium">{e.title}</p>

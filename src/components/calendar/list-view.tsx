@@ -5,7 +5,7 @@ import { EventCard } from "./event-card";
 export function ListView({ events }: { events: CalendarEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <p className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
         Inga kommande sammandrag.
       </p>
     );
@@ -23,7 +23,7 @@ export function ListView({ events }: { events: CalendarEvent[] }) {
     <div className="grid gap-6">
       {groups.map((g) => (
         <section key={g.date} className="grid gap-2">
-          <h2 className="text-sm font-medium capitalize text-muted-foreground">
+          <h2 className="text-sm font-semibold capitalize text-primary">
             {formatDate(g.date, {
               weekday: "long",
               day: "numeric",

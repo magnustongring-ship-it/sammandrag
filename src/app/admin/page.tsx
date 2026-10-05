@@ -45,7 +45,7 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold">Admin</h1>
+      <h1 className="text-3xl font-bold uppercase">Admin</h1>
 
       <Card>
         <CardHeader>

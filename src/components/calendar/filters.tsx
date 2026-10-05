@@ -16,7 +16,7 @@ export type FilterValues = {
 };
 
 const selectClass =
-  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30";
+  "h-9 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30";
 
 // Vanligt GET-formulär, så filtren fungerar även utan JavaScript.
 // Med JavaScript skickas formuläret direkt när en lista ändras.
@@ -38,7 +38,7 @@ export function CalendarFilters({
       ref={formRef}
       method="get"
       action="/"
-      className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_1.5fr_auto] sm:items-end"
+      className="grid gap-3 rounded-xl border bg-card p-4 shadow-sm sm:grid-cols-[1fr_1fr_1.5fr_auto] sm:items-end"
     >
       <input type="hidden" name="vy" value={values.vy} />
       {values.manad && <input type="hidden" name="manad" value={values.manad} />}

@@ -12,7 +12,7 @@ export default function GlobalError({ retry }: { retry: () => void }) {
         }}
       >
         <h1>Något gick fel</h1>
-        <p>Sammandrag kunde inte laddas. Försök igen om en stund.</p>
+        <p>Easy Basket planeraren kunde inte laddas. Försök igen om en stund.</p>
         <button onClick={() => retry()} style={{ padding: "0.5rem 1rem" }}>
           Försök igen
         </button>

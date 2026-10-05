@@ -17,9 +17,9 @@ export default async function OrganizationPage() {
 
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-t-4 border-t-primary shadow-md">
         <CardHeader>
-          <CardTitle>Din förening</CardTitle>
+          <CardTitle className="font-display text-2xl font-bold uppercase">Din förening</CardTitle>
           <CardDescription>
             Steg 2 av 2. Nya föreningar granskas innan de kan skapa sammandrag
             och anmäla lag. Du blir föreningsadmin.

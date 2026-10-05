@@ -56,7 +56,7 @@ export function registrantEmail(d: RegistrationEmailData) {
       "",
       "Svara på det här mejlet för att nå arrangören.",
       "",
-      "/Sammandrag",
+      "/Easy Basket planeraren",
     ].join("\n"),
   };
 }
@@ -75,7 +75,7 @@ export function organizerEmail(d: RegistrationEmailData) {
       "Deltagarlistan finns under Mina sammandrag:",
       d.url,
       "",
-      "/Sammandrag",
+      "/Easy Basket planeraren",
     ].join("\n"),
   };
 }

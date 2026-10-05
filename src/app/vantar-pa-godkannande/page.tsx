@@ -20,9 +20,9 @@ export default async function PendingPage() {
 
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-t-4 border-t-primary shadow-md">
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="font-display text-2xl font-bold uppercase">
             {rejected ? "Föreningen har inte godkänts" : "Väntar på godkännande"}
           </CardTitle>
           <CardDescription>{org.name}</CardDescription>

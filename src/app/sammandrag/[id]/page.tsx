@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarDays, Clock, MapPin, Users, type LucideIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -101,7 +102,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           ← Kalendern
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className={cn("text-2xl font-semibold", cancelled && "line-through")}>
+          <h1 className={cn("text-3xl font-bold uppercase", cancelled && "line-through")}>
             {event.title}
           </h1>
           {event.status !== "publicerad" && <EventStatusBadge status={event.status} />}
@@ -123,18 +124,18 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
         )}
       </div>
 
-      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-        <Info label="Datum">
+      <dl className="grid gap-x-6 gap-y-4 rounded-xl border bg-card p-4 text-sm shadow-sm sm:grid-cols-2">
+        <Info label="Datum" icon={CalendarDays}>
           <span className="capitalize">{formatDate(event.event_date, longDate)}</span>
           {time && `, ${time}`}
         </Info>
-        <Info label="Plats">
+        <Info label="Plats" icon={MapPin}>
           {event.venue_name}
           {event.address && <>, {event.address}</>}
           {event.city && <>, {event.city}</>}
         </Info>
-        <Info label="Arrangör">{event.organizations?.name ?? "–"}</Info>
-        <Info label="Sista anmälningsdag">
+        <Info label="Arrangör" icon={Users}>{event.organizations?.name ?? "–"}</Info>
+        <Info label="Sista anmälningsdag" icon={Clock}>
           {formatDate(lastRegistrationDay(event), longDate)}
         </Info>
       </dl>
@@ -148,7 +149,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
         {classes.length === 0 ? (
           <p className="text-sm text-muted-foreground">Inga klasser ännu.</p>
         ) : (
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y rounded-xl border bg-card shadow-sm">
             {classes.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <span className="font-medium">{c.label}</span>
@@ -182,7 +183,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
       {(myRegs ?? []).length > 0 && (
         <section className="grid gap-2">
           <h2 className="text-lg font-medium">Era anmälda lag</h2>
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y rounded-xl border bg-card shadow-sm">
             {myRegs!.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
@@ -259,11 +260,24 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
   );
 }
 
-function Info({ label, children }: { label: string; children: React.ReactNode }) {
+function Info({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{children}</dd>
+    <div className="flex gap-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
+      <div>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className="font-medium">{children}</dd>
+      </div>
     </div>
   );
 }

@@ -23,9 +23,9 @@ export default async function LoginPage({
 
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm border-t-4 border-t-primary shadow-md">
         <CardHeader>
-          <CardTitle>Logga in</CardTitle>
+          <CardTitle className="font-display text-2xl font-bold uppercase">Logga in</CardTitle>
           <CardDescription>Logga in med ditt konto för föreningen.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

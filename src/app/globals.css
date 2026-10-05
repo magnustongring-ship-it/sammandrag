@@ -4,51 +4,63 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  /* Varm ljus bakgrund, marinblå text, basketorange som primärfärg */
+  --background: oklch(0.985 0.006 80);
+  --foreground: oklch(0.22 0.03 262);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.22 0.03 262);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.22 0.03 262);
+  --primary: oklch(0.56 0.17 42);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0.02 262);
+  --secondary-foreground: oklch(0.27 0.06 262);
+  --muted: oklch(0.96 0.008 80);
+  --muted-foreground: oklch(0.5 0.025 262);
+  --accent: oklch(0.955 0.03 60);
+  --accent-foreground: oklch(0.27 0.06 262);
+  --destructive: oklch(0.55 0.22 27);
+  --border: oklch(0.9 0.012 80);
+  --input: oklch(0.88 0.015 80);
+  --ring: oklch(0.7 0.17 50);
+  /* Varumärke: marinblå som en inomhusplan, ljus orange som bollen */
+  --brand: oklch(0.27 0.06 262);
+  --brand-foreground: oklch(0.98 0.005 80);
+  --ball: oklch(0.7 0.17 50);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.18 0.03 262);
+  --foreground: oklch(0.96 0.008 80);
+  --card: oklch(0.23 0.035 262);
+  --card-foreground: oklch(0.96 0.008 80);
+  --popover: oklch(0.23 0.035 262);
+  --popover-foreground: oklch(0.96 0.008 80);
+  --primary: oklch(0.72 0.16 52);
+  --primary-foreground: oklch(0.18 0.03 262);
+  --secondary: oklch(0.3 0.04 262);
+  --secondary-foreground: oklch(0.96 0.008 80);
+  --muted: oklch(0.27 0.035 262);
+  --muted-foreground: oklch(0.72 0.02 262);
+  --accent: oklch(0.32 0.05 262);
+  --accent-foreground: oklch(0.96 0.008 80);
+  --destructive: oklch(0.7 0.19 22);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.16 52);
+  --brand: oklch(0.14 0.03 262);
+  --brand-foreground: oklch(0.98 0.005 80);
+  --ball: oklch(0.72 0.16 52);
 }
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-barlow);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-ball: var(--ball);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -79,5 +91,9 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Smalt sporttypsnitt för sidrubriker */
+  h1 {
+    @apply font-display tracking-tight;
   }
 }

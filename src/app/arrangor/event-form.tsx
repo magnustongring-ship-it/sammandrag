@@ -169,7 +169,7 @@ export function EventForm({
           return (
             <div
               key={row.key}
-              className="grid grid-cols-2 items-end gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_5.5rem_auto]"
+              className="grid grid-cols-2 items-end gap-2 rounded-xl border bg-card p-3 shadow-xs sm:grid-cols-[1fr_1fr_5.5rem_auto]"
             >
               <div className="grid gap-1.5">
                 <Label htmlFor={`age-${row.key}`} className="text-xs">

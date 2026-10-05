@@ -36,7 +36,7 @@ export default async function MyRegistrationsPage() {
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
       <div>
-        <h1 className="text-2xl font-semibold">Mina anmälningar</h1>
+        <h1 className="text-3xl font-bold uppercase">Mina anmälningar</h1>
         <p className="text-sm text-muted-foreground">{session.organization.name}</p>
       </div>
 
@@ -49,7 +49,7 @@ export default async function MyRegistrationsPage() {
       <section className="grid gap-2">
         <h2 className="text-lg font-medium">Kommande</h2>
         {upcoming.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
             Ni har inga anmälda lag.{" "}
             <Link href="/" className="font-medium text-foreground underline">
               Hitta sammandrag i kalendern
@@ -89,7 +89,7 @@ type Row = {
 
 function List({ rows, today }: { rows: Row[]; today: string }) {
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="divide-y rounded-xl border bg-card shadow-sm">
       {rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="min-w-0">

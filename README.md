@@ -1,4 +1,4 @@
-# Sammandrag
+# Easy Basket planeraren
 
 Webbapp där basketföreningar planerar sammandrag i en kalender och andra
 föreningar anmäler lag. Se `SPEC.md` i mappen ovanför för hela beskrivningen.

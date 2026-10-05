@@ -57,7 +57,7 @@ export default async function EditEventPage({
           ← Mina sammandrag
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{event.title}</h1>
+          <h1 className="text-3xl font-bold uppercase">{event.title}</h1>
           <EventStatusBadge status={event.status} />
         </div>
       </div>

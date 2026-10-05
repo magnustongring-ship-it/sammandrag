@@ -27,7 +27,7 @@ export function MobileMenu({ children }: { children: React.ReactNode }) {
   return (
     <details ref={ref} className="relative md:hidden">
       <summary
-        className="flex size-9 cursor-pointer list-none items-center justify-center rounded-md border [&::-webkit-details-marker]:hidden"
+        className="flex size-9 cursor-pointer list-none items-center justify-center rounded-md border border-white/30 hover:bg-white/10 [&::-webkit-details-marker]:hidden"
         aria-label="Meny"
       >
         <Menu className="size-5" />

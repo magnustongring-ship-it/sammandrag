@@ -26,6 +26,19 @@ const dot: Record<Availability, string> = {
   okant: "bg-muted-foreground/40",
 };
 
+// Färgad vänsterkant på evenemangskort.
+const edge: Record<Availability | "avbokad", string> = {
+  lediga: "border-l-emerald-600",
+  "fa-kvar": "border-l-amber-500",
+  fullt: "border-l-red-600",
+  okant: "border-l-ball",
+  avbokad: "border-l-muted-foreground/40",
+};
+
+export function eventEdgeClass(event: CalendarEvent): string {
+  return edge[event.status === "avbokad" ? "avbokad" : event.availability];
+}
+
 export function eventChipClass(event: CalendarEvent): string {
   return chip[event.status === "avbokad" ? "avbokad" : event.availability];
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { formatDate, formatTimeRange, genderLabel } from "@/lib/calendar";
 import type { CalendarEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
-import { AvailabilityText, classChipClass } from "./availability";
+import { AvailabilityText, classChipClass, eventEdgeClass } from "./availability";
 
 export function EventCard({
   event,
@@ -17,14 +17,17 @@ export function EventCard({
   return (
     <Link
       href={`/sammandrag/${event.id}`}
-      className="block rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+      className={cn(
+        "block rounded-xl border border-l-4 bg-card p-4 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md",
+        eventEdgeClass(event),
+      )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
             {[showDate && formatDate(event.date), time].filter(Boolean).join(" · ")}
           </p>
-          <h3 className={cn("font-semibold", cancelled && "line-through")}>
+          <h3 className={cn("text-lg font-semibold", cancelled && "line-through")}>
             {event.title}
           </h3>
           <p className="text-sm text-muted-foreground">
