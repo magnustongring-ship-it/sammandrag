@@ -20,6 +20,12 @@ export async function SiteHeader() {
                   {session.organization.name}
                 </span>
               )}
+              {session.organization?.status === "godkand" &&
+                session.profile.is_org_admin && (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/arrangor">Mina sammandrag</Link>
+                  </Button>
+                )}
               {session.profile.is_site_admin && (
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/admin">Admin</Link>

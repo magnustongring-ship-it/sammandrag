@@ -67,6 +67,15 @@ export async function requireApprovedOrg(): Promise<
   return session as Session & { organization: Tables<"organizations"> };
 }
 
+// För arrangörssidor: godkänd förening och föreningsadmin.
+export async function requireOrganizer(): Promise<
+  Session & { organization: Tables<"organizations"> }
+> {
+  const session = await requireApprovedOrg();
+  if (!session.profile.is_org_admin) redirect("/");
+  return session;
+}
+
 export async function requireSiteAdmin(): Promise<Session> {
   const session = await requireUser();
   if (!session.profile.is_site_admin) redirect("/");

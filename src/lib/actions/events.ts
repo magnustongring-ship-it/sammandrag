@@ -1,0 +1,280 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import type { PostgrestError } from "@supabase/supabase-js";
+import { requireOrganizer } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { todayInStockholm } from "@/lib/calendar";
+import { validateEventForm, type EventFormValues } from "@/lib/event-form";
+import type { EventStatus, TablesInsert } from "@/lib/database.types";
+import type { FormState } from "@/lib/actions/auth";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+function dbError(error: PostgrestError): string {
+  if (error.code === "23505") {
+    return "Samma åldersgrupp och kön finns redan i det här sammandraget.";
+  }
+  if (error.code === "42501") {
+    return "Du har inte behörighet att ändra det här sammandraget.";
+  }
+  return `Kunde inte spara: ${error.message}`;
+}
+
+function parseValues(formData: FormData): EventFormValues | null {
+  try {
+    const v = JSON.parse(String(formData.get("values") ?? ""));
+    if (typeof v !== "object" || v === null || !Array.isArray(v.classes)) {
+      return null;
+    }
+    const s = (x: unknown) => (typeof x === "string" ? x.trim() : "");
+    return {
+      title: s(v.title),
+      eventDate: s(v.eventDate),
+      startTime: s(v.startTime),
+      endTime: s(v.endTime),
+      venueName: s(v.venueName),
+      address: s(v.address),
+      city: s(v.city),
+      description: s(v.description),
+      registrationDeadline: s(v.registrationDeadline),
+      classes: v.classes.map((c: Record<string, unknown>) => ({
+        id: typeof c.id === "string" ? c.id : undefined,
+        key: s(c.key),
+        ageGroupId: s(c.ageGroupId),
+        gender: s(c.gender),
+        maxTeams: s(c.maxTeams),
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function classCounts(supabase: Supabase, eventId: string) {
+  const { data } = await supabase.rpc("event_class_counts", {
+    p_event_ids: [eventId],
+  });
+  return new Map(
+    (data ?? []).map((c) => [
+      c.event_class_id,
+      { registered: c.registered, total: c.registered + c.waitlisted },
+    ]),
+  );
+}
+
+/**
+ * Skapar (eventId = null) eller uppdaterar ett sammandrag med klasser.
+ * intent: "utkast" sparar som utkast, "publicera" publicerar,
+ * "spara" behåller nuvarande status.
+ */
+export async function saveEvent(
+  eventId: string | null,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireOrganizer();
+  const supabase = await createClient();
+  const values = parseValues(formData);
+  if (!values) return { error: "Formuläret kunde inte läsas. Ladda om sidan." };
+  const intent = String(formData.get("intent") ?? "spara");
+
+  let currentStatus: EventStatus = "utkast";
+  let existingClassIds = new Set<string>();
+  if (eventId) {
+    const { data: event } = await supabase
+      .from("events")
+      .select("status, organizer_org_id, event_classes(id)")
+      .eq("id", eventId)
+      .single();
+    if (!event || event.organizer_org_id !== session.organization.id) {
+      return { error: "Sammandraget hittades inte." };
+    }
+    currentStatus = event.status;
+    existingClassIds = new Set(event.event_classes.map((c) => c.id));
+  }
+
+  const status: EventStatus =
+    intent === "publicera"
+      ? "publicerad"
+      : intent === "utkast" && currentStatus === "utkast"
+        ? "utkast"
+        : currentStatus;
+
+  const result = validateEventForm(values, {
+    publishing: status === "publicerad",
+    today: todayInStockholm(),
+    isNew: !eventId,
+  });
+  if (!result.ok) return { error: result.error };
+  const classes = result.classes;
+
+  const fields = {
+    title: values.title,
+    event_date: values.eventDate,
+    start_time: values.startTime || null,
+    end_time: values.endTime || null,
+    venue_name: values.venueName,
+    address: values.address || null,
+    city: values.city || null,
+    description: values.description || null,
+    registration_deadline: values.registrationDeadline || null,
+    status,
+  };
+
+  if (!eventId) {
+    const { data: created, error } = await supabase
+      .from("events")
+      .insert({
+        ...fields,
+        organizer_org_id: session.organization.id,
+        created_by: session.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !created) return { error: error ? dbError(error) : "Kunde inte spara." };
+
+    if (classes.length > 0) {
+      const { error: classError } = await supabase.from("event_classes").insert(
+        classes.map(
+          (c): TablesInsert<"event_classes"> => ({
+            event_id: created.id,
+            age_group_id: c.ageGroupId,
+            gender: c.gender,
+            max_teams: c.maxTeams,
+          }),
+        ),
+      );
+      if (classError) {
+        // Ångra så att inget halvt sparat sammandrag blir kvar.
+        await supabase.from("events").delete().eq("id", created.id);
+        return { error: dbError(classError) };
+      }
+    }
+    revalidatePath("/");
+    revalidatePath("/arrangor");
+    redirect(`/arrangor/${created.id}?sparat=1`);
+  }
+
+  // Redigering: jämför klasser mot det som finns sparat.
+  for (const c of classes) {
+    if (c.id && !existingClassIds.has(c.id)) {
+      return { error: "En klass hör inte till det här sammandraget. Ladda om sidan." };
+    }
+  }
+  const keptIds = new Set(classes.flatMap((c) => (c.id ? [c.id] : [])));
+  const removedIds = [...existingClassIds].filter((id) => !keptIds.has(id));
+  const counts = await classCounts(supabase, eventId);
+
+  const removedWithTeams = removedIds.filter(
+    (id) => (counts.get(id)?.total ?? 0) > 0,
+  );
+  if (removedWithTeams.length > 0 && formData.get("confirm_remove") !== "1") {
+    return {
+      error:
+        "Du tar bort klasser som har anmälda lag. Bekräfta borttagningen i rutan under klasserna och spara igen.",
+    };
+  }
+
+  for (const [i, c] of classes.entries()) {
+    const registered = c.id ? (counts.get(c.id)?.registered ?? 0) : 0;
+    if (c.maxTeams < registered) {
+      return {
+        error: `Klass ${i + 1}: ${registered} lag är redan anmälda, max antal lag kan inte vara lägre.`,
+      };
+    }
+  }
+
+  const { error: eventError } = await supabase
+    .from("events")
+    .update(fields)
+    .eq("id", eventId);
+  if (eventError) return { error: dbError(eventError) };
+
+  if (removedIds.length > 0) {
+    const { error } = await supabase
+      .from("event_classes")
+      .delete()
+      .in("id", removedIds);
+    if (error) return { error: dbError(error) };
+  }
+
+  for (const c of classes.filter((c) => c.id)) {
+    const { error } = await supabase
+      .from("event_classes")
+      .update({ age_group_id: c.ageGroupId, gender: c.gender, max_teams: c.maxTeams })
+      .eq("id", c.id!);
+    if (error) return { error: dbError(error) };
+  }
+
+  const added = classes.filter((c) => !c.id);
+  if (added.length > 0) {
+    const { error } = await supabase.from("event_classes").insert(
+      added.map((c) => ({
+        event_id: eventId,
+        age_group_id: c.ageGroupId,
+        gender: c.gender,
+        max_teams: c.maxTeams,
+      })),
+    );
+    if (error) return { error: dbError(error) };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/arrangor");
+  revalidatePath(`/sammandrag/${eventId}`);
+  redirect(`/arrangor/${eventId}?sparat=1`);
+}
+
+export type ActionResult = { error?: string };
+
+/** Avboka eller återpublicera ett publicerat sammandrag. */
+export async function setEventStatus(
+  eventId: string,
+  status: "publicerad" | "avbokad",
+): Promise<ActionResult> {
+  const session = await requireOrganizer();
+  const supabase = await createClient();
+  const { data: event } = await supabase
+    .from("events")
+    .select("status, organizer_org_id, event_classes(id)")
+    .eq("id", eventId)
+    .single();
+  if (!event || event.organizer_org_id !== session.organization.id) {
+    return { error: "Sammandraget hittades inte." };
+  }
+  if (status === "publicerad" && event.event_classes.length === 0) {
+    return { error: "Lägg till minst en klass innan du publicerar." };
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .update({ status })
+    .eq("id", eventId);
+  if (error) return { error: dbError(error) };
+
+  revalidatePath("/");
+  revalidatePath("/arrangor");
+  revalidatePath(`/arrangor/${eventId}`);
+  revalidatePath(`/sammandrag/${eventId}`);
+  return {};
+}
+
+/** Tar bort ett utkast. Publicerade sammandrag avbokas i stället. */
+export async function deleteDraft(eventId: string): Promise<ActionResult> {
+  const session = await requireOrganizer();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .eq("organizer_org_id", session.organization.id)
+    .eq("status", "utkast")
+    .select("id");
+  if (error) return { error: dbError(error) };
+  if (!data?.length) return { error: "Bara utkast kan tas bort." };
+
+  revalidatePath("/arrangor");
+  redirect("/arrangor");
+}
