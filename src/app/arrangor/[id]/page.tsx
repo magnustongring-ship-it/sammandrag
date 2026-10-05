@@ -6,7 +6,9 @@ import { deleteDraft, setEventStatus } from "@/lib/actions/events";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { Button } from "@/components/ui/button";
+import { genderLabel } from "@/lib/calendar";
 import { EventForm } from "../event-form";
+import { Participants } from "./participants";
 
 export const metadata = { title: "Redigera sammandrag – Sammandrag" };
 
@@ -21,7 +23,7 @@ export default async function EditEventPage({
 
   const { data: event } = await supabase
     .from("events")
-    .select("*, event_classes(id, age_group_id, gender, max_teams, age_groups(sort_order))")
+    .select("*, event_classes(id, age_group_id, gender, max_teams, age_groups(name, sort_order))")
     .eq("id", id)
     .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
@@ -35,19 +37,18 @@ export default async function EditEventPage({
     (counts ?? []).map((c) => [c.event_class_id, c.registered + c.waitlisted]),
   );
 
-  const classes = [...event.event_classes]
-    .sort(
-      (a, b) =>
-        (a.age_groups?.sort_order ?? 0) - (b.age_groups?.sort_order ?? 0) ||
-        a.gender.localeCompare(b.gender),
-    )
-    .map((c) => ({
-      id: c.id,
-      key: c.id,
-      ageGroupId: String(c.age_group_id),
-      gender: c.gender,
-      maxTeams: String(c.max_teams),
-    }));
+  const sortedClasses = [...event.event_classes].sort(
+    (a, b) =>
+      (a.age_groups?.sort_order ?? 0) - (b.age_groups?.sort_order ?? 0) ||
+      a.gender.localeCompare(b.gender),
+  );
+  const classes = sortedClasses.map((c) => ({
+    id: c.id,
+    key: c.id,
+    ageGroupId: String(c.age_group_id),
+    gender: c.gender,
+    maxTeams: String(c.max_teams),
+  }));
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
@@ -81,6 +82,17 @@ export default async function EditEventPage({
         </p>
       )}
 
+      {event.status !== "utkast" && (
+        <Participants
+          classes={sortedClasses.map((c) => ({
+            id: c.id,
+            label: `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`,
+            max: c.max_teams,
+          }))}
+        />
+      )}
+
+      <h2 className="border-t pt-6 text-lg font-medium">Uppgifter och klasser</h2>
       <EventForm
         eventId={event.id}
         status={event.status}

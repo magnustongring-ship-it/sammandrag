@@ -27,6 +27,14 @@ export default async function OrganizerPage() {
 
   const today = todayInStockholm();
   const events: Row[] = data ?? [];
+  const { data: counts } = events.length
+    ? await supabase.rpc("event_class_counts", { p_event_ids: events.map((e) => e.id) })
+    : { data: [] };
+  const teamsByClass = new Map(
+    (counts ?? []).map((c) => [c.event_class_id, c.registered + c.waitlisted]),
+  );
+  const teamsFor = (e: Row) =>
+    e.event_classes.reduce((sum, c) => sum + (teamsByClass.get(c.id) ?? 0), 0);
   const upcoming = events.filter((e) => e.event_date >= today);
   const past = events.filter((e) => e.event_date < today).reverse();
 
@@ -61,21 +69,27 @@ export default async function OrganizerPage() {
             .
           </p>
         ) : (
-          <EventList events={upcoming} />
+          <EventList events={upcoming} teamsFor={teamsFor} />
         )}
       </section>
 
       {past.length > 0 && (
         <section className="grid gap-2">
           <h2 className="text-lg font-medium">Tidigare</h2>
-          <EventList events={past} />
+          <EventList events={past} teamsFor={teamsFor} />
         </section>
       )}
     </main>
   );
 }
 
-function EventList({ events }: { events: Row[] }) {
+function EventList({
+  events,
+  teamsFor,
+}: {
+  events: Row[];
+  teamsFor: (e: Row) => number;
+}) {
   return (
     <ul className="divide-y rounded-lg border">
       {events.map((e) => (
@@ -92,6 +106,7 @@ function EventList({ events }: { events: Row[] }) {
                   formatTimeRange(e.start_time, e.end_time),
                   [e.venue_name, e.city].filter(Boolean).join(", "),
                   `${e.event_classes.length} ${e.event_classes.length === 1 ? "klass" : "klasser"}`,
+                  e.status !== "utkast" && `${teamsFor(e)} anmälda lag`,
                 ]
                   .filter(Boolean)
                   .join(" · ")}

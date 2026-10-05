@@ -118,6 +118,7 @@ export async function cancelRegistration(
   }
 
   revalidatePath("/sammandrag/[id]", "page");
+  revalidatePath("/arrangor/[id]", "page");
   revalidatePath("/mina-anmalningar");
   revalidatePath("/");
   return {};
