@@ -256,6 +256,14 @@ export type Database = {
         Args: { p_name: string; p_city: string; p_contact_email: string };
         Returns: string;
       };
+      event_class_counts: {
+        Args: { p_event_ids: string[] };
+        Returns: {
+          event_class_id: string;
+          registered: number;
+          waitlisted: number;
+        }[];
+      };
       my_org: { Args: Record<PropertyKey, never>; Returns: string };
       is_my_org_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_site_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
