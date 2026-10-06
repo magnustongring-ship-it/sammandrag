@@ -45,6 +45,7 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 | `20261005020000_age_groups_admin.sql` | Sajtadmin får hantera åldersgrupper |
 | `20261006000000_schedule.sql` | Spelschema: inställningar och matcher |
 | `20261007000000_easy_basket_rules.sql` | Matchregler per åldersgrupp och klass (Easy Basket) |
+| `20261008000000_referees.sql` | Domare: intresseanmälan och tillsättning på matcher |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.
@@ -59,6 +60,8 @@ när schemat ändras, eller generera dem med `supabase gen types typescript`.
 | `/mina-anmalningar` | Föreningens anmälda lag |
 | `/arrangor`, `/arrangor/[id]` | Föreningens sammandrag, redigering och deltagarlista |
 | `/arrangor/[id]/schema` | Skapa och publicera spelschema |
+| `/arrangor/[id]/domare` | Domarnas intresseanmälningar och tillsättning |
+| `/domare` | Kommande sammandrag där domare kan anmäla intresse |
 | `/admin` | Godkänna föreningar och hantera åldersgrupper |
 
 ## Kommandon

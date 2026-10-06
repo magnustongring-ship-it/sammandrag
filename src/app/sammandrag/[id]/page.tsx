@@ -4,6 +4,7 @@ import {
   Clock,
   FileText,
   MapPin,
+  Flag,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { RegisterForm } from "./register-form";
+import { RefereeForm } from "./referee-form";
 import { getScheduleMatches } from "@/lib/schedule";
 import { ScheduleView } from "@/components/schedule-view";
 import { LevelBadge } from "@/components/level-badge";
@@ -110,6 +112,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
 
   const today = todayInStockholm();
   const open = isRegistrationOpen(event, today);
+  const refereesWelcome = event.status === "publicerad" && today <= event.event_date;
   const isOrganizer =
     myOrg?.id === event.organizer_org_id && session?.profile.is_org_admin;
   const time = formatTimeRange(event.start_time, event.end_time);
@@ -126,11 +129,20 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
             {event.title}
           </h1>
           {event.status !== "publicerad" && <EventStatusBadge status={event.status} />}
-          {isOrganizer && (
-            <Button asChild variant="outline" size="sm" className="ml-auto">
-              <Link href={`/arrangor/${event.id}`}>Redigera</Link>
-            </Button>
-          )}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {refereesWelcome && (
+              <Button asChild variant="outline" size="sm">
+                <a href="#domare">
+                  <Flag /> Anmäl dig som domare
+                </a>
+              </Button>
+            )}
+            {isOrganizer && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/arrangor/${event.id}`}>Redigera</Link>
+              </Button>
+            )}
+          </div>
         </div>
         {cancelled && (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
@@ -302,6 +314,30 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           )}
         </CardContent>
       </Card>
+
+      {refereesWelcome && (
+        <Card id="domare" className="scroll-mt-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Flag className="size-5 text-primary" aria-hidden="true" />
+              Vill du döma?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isOrganizer && (
+              <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm">
+                Du är arrangör. Här anmäler domare sitt intresse. Se anmälningarna och tillsätt
+                domare under{" "}
+                <Link href={`/arrangor/${event.id}/domare`} className="font-medium underline">
+                  Domare
+                </Link>
+                .
+              </p>
+            )}
+            <RefereeForm eventId={event.id} />
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

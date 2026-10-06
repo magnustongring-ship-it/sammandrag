@@ -14,6 +14,7 @@ export type OrganizationStatus = "vantar" | "godkand" | "avslagen";
 export type EventStatus = "utkast" | "publicerad" | "avbokad";
 export type Gender = "pojkar" | "flickor" | "mixed";
 export type RegistrationStatus = "anmald" | "vantelista" | "avanmald";
+export type RefereeLevel = "matchledare" | "niva1" | "niva2" | "niva3" | "niva4";
 
 export type Database = {
   public: {
@@ -351,6 +352,10 @@ export type Database = {
           home_club: string | null;
           away_team: string;
           away_club: string | null;
+          referee1_id: string | null;
+          referee1_name: string | null;
+          referee2_id: string | null;
+          referee2_name: string | null;
         };
         Insert: {
           id?: string;
@@ -366,6 +371,10 @@ export type Database = {
           home_club?: string | null;
           away_team: string;
           away_club?: string | null;
+          referee1_id?: string | null;
+          referee1_name?: string | null;
+          referee2_id?: string | null;
+          referee2_name?: string | null;
         };
         Update: {
           id?: string;
@@ -381,6 +390,10 @@ export type Database = {
           home_club?: string | null;
           away_team?: string;
           away_club?: string | null;
+          referee1_id?: string | null;
+          referee1_name?: string | null;
+          referee2_id?: string | null;
+          referee2_name?: string | null;
         };
         Relationships: [
           {
@@ -395,6 +408,44 @@ export type Database = {
             columns: ["event_class_id"];
             isOneToOne: false;
             referencedRelation: "event_classes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      referee_applications: {
+        Row: {
+          id: string;
+          event_id: string;
+          name: string;
+          email: string;
+          phone: string;
+          level: RefereeLevel;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          name: string;
+          email: string;
+          phone: string;
+          level: RefereeLevel;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          name?: string;
+          email?: string;
+          phone?: string;
+          level?: RefereeLevel;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "referee_applications_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
             referencedColumns: ["id"];
           },
         ];

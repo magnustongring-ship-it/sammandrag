@@ -18,6 +18,8 @@ import {
   type ScheduleForm,
 } from "@/lib/schedule-settings";
 import type { Json } from "@/lib/database.types";
+import { headers } from "next/headers";
+import { notifyRefereeChanges, refereeSnapshot } from "@/lib/referee-notify";
 
 export type ScheduleState =
   { error?: string; message?: string; warnings?: string[] } | undefined;
@@ -181,6 +183,9 @@ export async function generateSchedule(
       error: scheduleError(saveError, "Kunde inte spara inställningarna"),
     };
 
+  // Tillsatta domare försvinner när matcherna ersätts; de meddelas nedan.
+  const refsBefore = await refereeSnapshot(supabase, eventId);
+
   const { error: deleteError } = await supabase
     .from("schedule_matches")
     .delete()
@@ -210,6 +215,16 @@ export async function generateSchedule(
   const warnings = result.skipped.map(
     (s) => `${s.label}: ${s.reason.toLowerCase()}, inga matcher.`,
   );
+  if (refsBefore.matches.some((m) => m.refereeIds.length > 0)) {
+    warnings.push("Domartillsättningen nollställdes. Fördela domarna på nytt under Domare.");
+    await notifyRefereeChanges(
+      supabase,
+      eventId,
+      refsBefore,
+      await refereeSnapshot(supabase, eventId),
+      (await headers()).get("origin") ?? "",
+    );
+  }
   const end = fromMinutes(result.endMinutes!);
   if (event.end_time && result.endMinutes! > toMinutes(event.end_time)) {
     warnings.push(
@@ -251,8 +266,25 @@ export async function setSchedulePublished(
   if (error) return { error: scheduleError(error, "Kunde inte ändra schemat") };
   if (!data?.length) return { error: "Skapa ett schema först." };
 
+  // Vid publicering får varje tillsatt domare sina matcher.
+  if (published) {
+    const current = await refereeSnapshot(supabase, eventId);
+    const empty = {
+      contacts: current.contacts,
+      matches: current.matches.map((m) => ({ ...m, refereeIds: [] })),
+    };
+    await notifyRefereeChanges(
+      supabase,
+      eventId,
+      empty,
+      current,
+      (await headers()).get("origin") ?? "",
+    );
+  }
+
   revalidatePath(`/arrangor/${eventId}/schema`);
   revalidatePath(`/sammandrag/${eventId}`);
+  revalidatePath(`/arrangor/${eventId}/domare`);
   return {};
 }
 

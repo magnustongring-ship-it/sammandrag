@@ -21,6 +21,7 @@ export async function SiteHeader() {
             label: "Mina sammandrag",
           },
         session.profile.is_site_admin && { href: "/admin", label: "Admin" },
+        { href: "/domare", label: "Bli domare" },
       ].filter((l): l is { href: string; label: string } => Boolean(l))
     : [];
 

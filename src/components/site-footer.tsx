@@ -9,9 +9,14 @@ export function SiteFooter() {
           <BallIcon className="size-5" />
           <span>Easy Basket planeraren – planera och anmäl lag till basketsammandrag</span>
         </div>
-        <Link href="/" className="hover:text-brand-foreground hover:underline">
-          Kalender
-        </Link>
+        <nav className="flex gap-4">
+          <Link href="/" className="hover:text-brand-foreground hover:underline">
+            Kalender
+          </Link>
+          <Link href="/domare" className="hover:text-brand-foreground hover:underline">
+            Bli domare
+          </Link>
+        </nav>
       </div>
     </footer>
   );

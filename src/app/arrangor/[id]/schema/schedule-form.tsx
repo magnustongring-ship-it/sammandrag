@@ -226,7 +226,9 @@ export function ScheduleForm({
           {pending ? "Skapar schema…" : hasSchedule ? "Skapa schemat på nytt" : "Skapa schema"}
         </Button>
         {hasSchedule && (
-          <p className="text-sm text-muted-foreground">Det nuvarande schemat ersätts.</p>
+          <p className="text-sm text-muted-foreground">
+            Det nuvarande schemat ersätts. Tillsatta domare tas bort och får fördelas på nytt.
+          </p>
         )}
       </div>
     </form>

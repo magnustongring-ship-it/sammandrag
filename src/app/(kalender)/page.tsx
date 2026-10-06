@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, Plus } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -99,19 +99,31 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
               planerar klasser och håller koll på anmälningarna.
             </p>
           </div>
-          {canCreate ? (
-            <Button asChild size="lg">
-              <Link href="/arrangor/nytt">
-                <Plus /> Nytt sammandrag
+          <div className="flex flex-wrap gap-2">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-white/30 bg-transparent text-brand-foreground hover:bg-white/10 hover:text-brand-foreground"
+            >
+              <Link href="/domare">
+                <Flag /> Bli domare
               </Link>
             </Button>
-          ) : (
-            !session && (
+            {canCreate ? (
               <Button asChild size="lg">
-                <Link href="/registrera">Registrera din förening</Link>
+                <Link href="/arrangor/nytt">
+                  <Plus /> Nytt sammandrag
+                </Link>
               </Button>
-            )
-          )}
+            ) : (
+              !session && (
+                <Button asChild size="lg">
+                  <Link href="/registrera">Registrera din förening</Link>
+                </Button>
+              )
+            )}
+          </div>
         </div>
       </section>
 

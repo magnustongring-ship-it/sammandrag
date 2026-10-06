@@ -114,6 +114,12 @@ export default async function SchedulePage({
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold uppercase">Spelschema</h1>
+          <Link
+            href={`/arrangor/${id}/domare`}
+            className="ml-auto text-sm font-medium text-primary underline"
+          >
+            Tillsätt domare →
+          </Link>
           {schedule &&
             (schedule.published ? (
               <Badge>Publicerat</Badge>

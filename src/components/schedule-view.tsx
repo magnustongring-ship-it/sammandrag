@@ -15,6 +15,8 @@ export type ScheduleMatch = {
   homeClub: string | null;
   away: string;
   awayClub: string | null;
+  /** Tillsatta domares namn */
+  referees?: string[];
 };
 
 const selectClass =
@@ -110,6 +112,12 @@ export function ScheduleView({ matches }: { matches: ScheduleMatch[] }) {
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {m.classLabel} · {m.gameFormat} · {m.start}–{m.end}
+                      {m.referees && m.referees.length > 0 && (
+                        <span className="block sm:inline">
+                          <span className="hidden sm:inline"> · </span>
+                          Domare: {m.referees.join(", ")}
+                        </span>
+                      )}
                     </span>
                   </li>
                 ))}
