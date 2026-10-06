@@ -43,6 +43,7 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 | `20261005000000_event_class_counts.sql` | Antal anmälda per klass utan att lagnamn läcker ut |
 | `20261005010000_registration_rules.sql` | Anmälningsregler, väntelista och avanmälan |
 | `20261005020000_age_groups_admin.sql` | Sajtadmin får hantera åldersgrupper |
+| `20261006000000_schedule.sql` | Spelschema: inställningar och matcher |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.
@@ -56,6 +57,7 @@ när schemat ändras, eller generera dem med `supabase gen types typescript`.
 | `/logga-in`, `/registrera` | Inloggning och registrering av förening |
 | `/mina-anmalningar` | Föreningens anmälda lag |
 | `/arrangor`, `/arrangor/[id]` | Föreningens sammandrag, redigering och deltagarlista |
+| `/arrangor/[id]/schema` | Skapa och publicera spelschema |
 | `/admin` | Godkänna föreningar och hantera åldersgrupper |
 
 ## Kommandon

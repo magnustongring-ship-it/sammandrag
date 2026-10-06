@@ -247,6 +247,128 @@ export type Database = {
           },
         ];
       };
+      event_schedules: {
+        Row: {
+          event_id: string;
+          start_time: string;
+          courts: number;
+          min_rest_minutes: number;
+          game_format: string;
+          periods: number;
+          period_minutes: number;
+          break_minutes: number;
+          matchup: "alla" | "antal";
+          matches_per_team: number;
+          class_settings: Json;
+          published: boolean;
+          generated_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          event_id: string;
+          start_time: string;
+          courts?: number;
+          min_rest_minutes?: number;
+          game_format?: string;
+          periods?: number;
+          period_minutes?: number;
+          break_minutes?: number;
+          matchup?: "alla" | "antal";
+          matches_per_team?: number;
+          class_settings?: Json;
+          published?: boolean;
+          generated_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          event_id?: string;
+          start_time?: string;
+          courts?: number;
+          min_rest_minutes?: number;
+          game_format?: string;
+          periods?: number;
+          period_minutes?: number;
+          break_minutes?: number;
+          matchup?: "alla" | "antal";
+          matches_per_team?: number;
+          class_settings?: Json;
+          published?: boolean;
+          generated_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_schedules_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: true;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      schedule_matches: {
+        Row: {
+          id: string;
+          event_id: string;
+          event_class_id: string;
+          court: number;
+          starts_at: string;
+          ends_at: string;
+          game_format: string;
+          home_registration_id: string | null;
+          away_registration_id: string | null;
+          home_team: string;
+          home_club: string | null;
+          away_team: string;
+          away_club: string | null;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          event_class_id: string;
+          court: number;
+          starts_at: string;
+          ends_at: string;
+          game_format: string;
+          home_registration_id?: string | null;
+          away_registration_id?: string | null;
+          home_team: string;
+          home_club?: string | null;
+          away_team: string;
+          away_club?: string | null;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          event_class_id?: string;
+          court?: number;
+          starts_at?: string;
+          ends_at?: string;
+          game_format?: string;
+          home_registration_id?: string | null;
+          away_registration_id?: string | null;
+          home_team?: string;
+          home_club?: string | null;
+          away_team?: string;
+          away_club?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "schedule_matches_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "schedule_matches_event_class_id_fkey";
+            columns: ["event_class_id"];
+            isOneToOne: false;
+            referencedRelation: "event_classes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -268,6 +390,7 @@ export type Database = {
           waitlisted: number;
         }[];
       };
+      is_event_organizer: { Args: { p_event_id: string }; Returns: boolean };
       my_org: { Args: Record<PropertyKey, never>; Returns: string };
       is_my_org_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_site_admin: { Args: Record<PropertyKey, never>; Returns: boolean };

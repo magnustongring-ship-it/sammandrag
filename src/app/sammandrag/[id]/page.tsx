@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { RegisterForm } from "./register-form";
+import { getScheduleMatches } from "@/lib/schedule";
+import { ScheduleView } from "@/components/schedule-view";
 
 export async function generateMetadata({ params }: PageProps<"/sammandrag/[id]">) {
   const { id } = await params;
@@ -60,7 +62,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
 
   const classIds = event.event_classes.map((c) => c.id);
   const myOrg = session?.organization;
-  const [{ data: counts }, { data: myRegs }] = await Promise.all([
+  const [{ data: counts }, { data: myRegs }, { data: schedule }] = await Promise.all([
     supabase.rpc("event_class_counts", { p_event_ids: [id] }),
     myOrg && classIds.length > 0
       ? supabase
@@ -71,7 +73,12 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           .neq("status", "avanmald")
           .order("created_at")
       : Promise.resolve({ data: [] as Tables<"registrations">[] }),
+    supabase.from("event_schedules").select("published").eq("event_id", id).maybeSingle(),
   ]);
+  // Arrangören kan läsa ett opublicerat schema, men det visas bara när det är publicerat.
+  const scheduleMatches = schedule?.published
+    ? (await getScheduleMatches(supabase, id)).matches
+    : [];
   const countById = new Map((counts ?? []).map((c) => [c.event_class_id, c]));
   const countsKnown = counts !== null;
 
@@ -194,6 +201,13 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           </ul>
         )}
       </section>
+
+      {scheduleMatches.length > 0 && (
+        <section className="grid gap-3">
+          <h2 className="font-display text-2xl font-bold uppercase">Spelschema</h2>
+          <ScheduleView matches={scheduleMatches} />
+        </section>
+      )}
 
       {(myRegs ?? []).length > 0 && (
         <section className="grid gap-2">

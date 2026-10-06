@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarClock } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -59,6 +60,13 @@ export default async function EditEventPage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold uppercase">{event.title}</h1>
           <EventStatusBadge status={event.status} />
+          {event.status !== "utkast" && (
+            <Button asChild className="ml-auto">
+              <Link href={`/arrangor/${event.id}/schema`}>
+                <CalendarClock /> Spelschema
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
