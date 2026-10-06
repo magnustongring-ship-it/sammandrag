@@ -40,7 +40,10 @@ export function ScheduleForm({
   hasSchedule: boolean;
 }) {
   const [state, action, pending] = useActionState(generateSchedule, undefined);
-  const [values, setValues] = useState<ScheduleFormValues>(initial);
+  // Säkerställ matchups även om tillståndet kommer från en äldre version av
+  // formuläret (t.ex. en sida som var öppen när koden uppdaterades).
+  const [rawValues, setValues] = useState<ScheduleFormValues>(initial);
+  const values = { ...rawValues, matchups: rawValues.matchups ?? initial.matchups ?? {} };
 
   const setTop = (field: "startTime" | "courts" | "minRestMinutes") =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -50,8 +53,8 @@ export function ScheduleForm({
     setValues((v) => ({
       ...v,
       matchups: {
-        ...v.matchups,
-        [classId]: { ...(v.matchups[classId] ?? DEFAULT_MATCHUP), ...patch },
+        ...(v.matchups ?? {}),
+        [classId]: { ...(v.matchups?.[classId] ?? DEFAULT_MATCHUP), ...patch },
       },
     }));
 
