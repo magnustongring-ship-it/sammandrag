@@ -4,7 +4,15 @@ import { useActionState, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { saveEvent } from "@/lib/actions/events";
 import { genderLabel, genders } from "@/lib/calendar";
-import { MAX_TEAMS_LIMIT, type ClassRow, type EventFormValues } from "@/lib/event-form";
+import {
+  MAX_TEAMS_LIMIT,
+  rulesFromAgeGroup,
+  type AgeGroupRules,
+  type ClassRow,
+  type EventFormValues,
+} from "@/lib/event-form";
+import { GAME_FORMATS } from "@/lib/schedule-settings";
+import { LevelBadge } from "@/components/level-badge";
 import type { EventStatus } from "@/lib/database.types";
 import { FormMessage } from "@/components/form-message";
 import { Button } from "@/components/ui/button";
@@ -20,6 +28,10 @@ const emptyClass = (key: string): ClassRow => ({
   ageGroupId: "",
   gender: "",
   maxTeams: "8",
+  gameFormat: "",
+  periods: "",
+  periodMinutes: "",
+  breakMinutes: "",
 });
 
 type TextField = Exclude<keyof EventFormValues, "classes">;
@@ -35,7 +47,7 @@ export function EventForm({
   eventId: string | null;
   status: EventStatus;
   initial: EventFormValues;
-  ageGroups: { id: number; name: string }[];
+  ageGroups: AgeGroupRules[];
   /** Antal anmälda lag (inkl. väntelista) per sparad klass */
   teamCounts?: Record<string, number>;
   minDate?: string;
@@ -178,7 +190,14 @@ export function EventForm({
                 <select
                   id={`age-${row.key}`}
                   value={row.ageGroupId}
-                  onChange={(e) => updateClass(row.key, { ageGroupId: e.target.value })}
+                  onChange={(e) => {
+                    // Förifyll matchregler från åldersgruppen (t.ex. Easy Basket).
+                    const group = ageGroups.find((g) => String(g.id) === e.target.value);
+                    updateClass(row.key, {
+                      ageGroupId: e.target.value,
+                      ...(group?.game_format ? rulesFromAgeGroup(group) : {}),
+                    });
+                  }}
                   className={selectClass}
                   required
                 >
@@ -240,6 +259,11 @@ export function EventForm({
               >
                 <Trash2 />
               </Button>
+              <ClassRules
+                row={row}
+                group={ageGroups.find((g) => String(g.id) === row.ageGroupId)}
+                onChange={(patch) => updateClass(row.key, patch)}
+              />
               {teams > 0 && (
                 <p className="col-span-full text-xs text-muted-foreground">
                   {teams} {teams === 1 ? "lag anmält" : "lag anmälda"} (inklusive väntelista)
@@ -336,5 +360,132 @@ export function EventForm({
         )}
       </div>
     </form>
+  );
+}
+
+function ClassRules({
+  row,
+  group,
+  onChange,
+}: {
+  row: ClassRow;
+  group: AgeGroupRules | undefined;
+  onChange: (patch: Partial<ClassRow>) => void;
+}) {
+  const id = (f: string) => `${f}-${row.key}`;
+  const differs =
+    group?.game_format &&
+    (row.gameFormat !== group.game_format ||
+      row.periods !== String(group.periods) ||
+      row.periodMinutes !== String(group.period_minutes) ||
+      row.breakMinutes !== String(group.break_minutes));
+
+  return (
+    <div className="col-span-full grid gap-2 rounded-lg bg-muted/60 p-2">
+      {group?.game_format ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <LevelBadge level={group.level} />
+          Easy Basket-regler för {group.name}
+          {group.court_note && <> · {group.court_note}</>}
+          {differs && (
+            <button
+              type="button"
+              className="font-medium text-primary underline"
+              onClick={() => onChange(rulesFromAgeGroup(group))}
+            >
+              Återställ
+            </button>
+          )}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Matchregler. Behövs för att klassen ska kunna få ett spelschema.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid gap-1">
+          <Label htmlFor={id("format")} className="text-xs">
+            Spelform
+          </Label>
+          <select
+            id={id("format")}
+            value={row.gameFormat}
+            onChange={(e) => onChange({ gameFormat: e.target.value })}
+            className={selectClass}
+          >
+            <option value="">Ingen</option>
+            {GAME_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+        <RuleNumber
+          id={id("periods")}
+          label="Perioder"
+          value={row.periods}
+          min={1}
+          max={12}
+          disabled={!row.gameFormat}
+          onChange={(periods) => onChange({ periods })}
+        />
+        <RuleNumber
+          id={id("minutes")}
+          label="Min per period"
+          value={row.periodMinutes}
+          min={1}
+          max={60}
+          disabled={!row.gameFormat}
+          onChange={(periodMinutes) => onChange({ periodMinutes })}
+        />
+        <RuleNumber
+          id={id("break")}
+          label="Paus (min)"
+          value={row.breakMinutes}
+          min={0}
+          max={30}
+          disabled={!row.gameFormat}
+          onChange={(breakMinutes) => onChange({ breakMinutes })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RuleNumber({
+  id,
+  label,
+  value,
+  min,
+  max,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  min: number;
+  max: number;
+  disabled: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="grid gap-1">
+      <Label htmlFor={id} className="text-xs">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        value={value}
+        disabled={disabled}
+        required={!disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   );
 }

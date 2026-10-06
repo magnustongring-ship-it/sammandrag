@@ -44,6 +44,7 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 | `20261005010000_registration_rules.sql` | Anmälningsregler, väntelista och avanmälan |
 | `20261005020000_age_groups_admin.sql` | Sajtadmin får hantera åldersgrupper |
 | `20261006000000_schedule.sql` | Spelschema: inställningar och matcher |
+| `20261007000000_easy_basket_rules.sql` | Matchregler per åldersgrupp och klass (Easy Basket) |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.

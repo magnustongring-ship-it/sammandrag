@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInStockholm } from "@/lib/calendar";
+import { getAgeGroupsWithRules } from "@/lib/age-groups";
 import { EventForm } from "../event-form";
 
 export const metadata = { title: "Nytt sammandrag" };
@@ -9,10 +10,7 @@ export const metadata = { title: "Nytt sammandrag" };
 export default async function NewEventPage() {
   const session = await requireOrganizer();
   const supabase = await createClient();
-  const { data: ageGroups } = await supabase
-    .from("age_groups")
-    .select("id, name")
-    .order("sort_order");
+  const ageGroups = await getAgeGroupsWithRules(supabase);
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
@@ -26,7 +24,7 @@ export default async function NewEventPage() {
         eventId={null}
         status="utkast"
         minDate={todayInStockholm()}
-        ageGroups={ageGroups ?? []}
+        ageGroups={ageGroups}
         initial={{
           title: "",
           eventDate: "",

@@ -3,6 +3,7 @@
 
 import type { Gender } from "@/lib/database.types";
 import { genders } from "@/lib/calendar";
+import { GAME_FORMATS } from "@/lib/schedule-settings";
 
 export type ClassRow = {
   /** Finns för klasser som redan är sparade */
@@ -12,6 +13,11 @@ export type ClassRow = {
   ageGroupId: string;
   gender: Gender | "";
   maxTeams: string;
+  /** Matchregler; tom spelform = inga egna regler för klassen */
+  gameFormat: string;
+  periods: string;
+  periodMinutes: string;
+  breakMinutes: string;
 };
 
 export type EventFormValues = {
@@ -32,7 +38,38 @@ export type ValidClass = {
   ageGroupId: number;
   gender: Gender;
   maxTeams: number;
+  gameFormat: string | null;
+  periods: number | null;
+  periodMinutes: number | null;
+  breakMinutes: number | null;
 };
+
+/** Standardregler för en åldersgrupp, t.ex. från Easy Basket */
+export type AgeGroupRules = {
+  id: number;
+  name: string;
+  level: string | null;
+  game_format: string | null;
+  periods: number | null;
+  period_minutes: number | null;
+  break_minutes: number | null;
+  court_note: string | null;
+};
+
+/** Klassens regelfält förifyllda från åldersgruppen. */
+export function rulesFromAgeGroup(
+  g: AgeGroupRules | undefined,
+): Pick<ClassRow, "gameFormat" | "periods" | "periodMinutes" | "breakMinutes"> {
+  if (!g?.game_format) {
+    return { gameFormat: "", periods: "", periodMinutes: "", breakMinutes: "" };
+  }
+  return {
+    gameFormat: g.game_format,
+    periods: String(g.periods ?? ""),
+    periodMinutes: String(g.period_minutes ?? ""),
+    breakMinutes: String(g.break_minutes ?? ""),
+  };
+}
 
 export const MAX_TEAMS_LIMIT = 200;
 
@@ -88,7 +125,32 @@ export function validateEventForm(
       };
     }
     seen.add(k);
-    classes.push({ id: row.id, ageGroupId, gender: row.gender as Gender, maxTeams });
+
+    let rules: Pick<ValidClass, "gameFormat" | "periods" | "periodMinutes" | "breakMinutes"> = {
+      gameFormat: null,
+      periods: null,
+      periodMinutes: null,
+      breakMinutes: null,
+    };
+    if (row.gameFormat) {
+      if (!GAME_FORMATS.includes(row.gameFormat as (typeof GAME_FORMATS)[number])) {
+        return { ok: false, error: `Klass ${n}: välj spelform.` };
+      }
+      const periods = Number(row.periods);
+      const periodMinutes = Number(row.periodMinutes);
+      const breakMinutes = Number(row.breakMinutes);
+      if (!Number.isInteger(periods) || periods < 1 || periods > 12) {
+        return { ok: false, error: `Klass ${n}: antal perioder måste vara mellan 1 och 12.` };
+      }
+      if (!Number.isInteger(periodMinutes) || periodMinutes < 1 || periodMinutes > 60) {
+        return { ok: false, error: `Klass ${n}: minuter per period måste vara mellan 1 och 60.` };
+      }
+      if (!Number.isInteger(breakMinutes) || breakMinutes < 0 || breakMinutes > 30) {
+        return { ok: false, error: `Klass ${n}: paus måste vara mellan 0 och 30 minuter.` };
+      }
+      rules = { gameFormat: row.gameFormat, periods, periodMinutes, breakMinutes };
+    }
+    classes.push({ id: row.id, ageGroupId, gender: row.gender as Gender, maxTeams, ...rules });
   }
 
   if (options.publishing && classes.length === 0) {

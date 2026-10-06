@@ -6,7 +6,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInStockholm } from "@/lib/calendar";
-import { validateEventForm, type EventFormValues } from "@/lib/event-form";
+import { validateEventForm, type EventFormValues, type ValidClass } from "@/lib/event-form";
 import type { EventStatus, TablesInsert } from "@/lib/database.types";
 import { overlaps, type Conflict } from "@/lib/conflicts";
 import { formatTimeRange } from "@/lib/calendar";
@@ -19,6 +19,9 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 function dbError(error: PostgrestError): string {
   if (error.code === "23505") {
     return "Samma åldersgrupp och kön finns redan i det här sammandraget.";
+  }
+  if (error.code === "PGRST204" || error.code === "42703") {
+    return "Databasen saknar kolumnerna för matchregler. Kör migreringen supabase/migrations/20261007000000_easy_basket_rules.sql i Supabase → SQL Editor.";
   }
   if (error.code === "42501") {
     return "Du har inte behörighet att ändra det här sammandraget.";
@@ -49,6 +52,10 @@ function parseValues(formData: FormData): EventFormValues | null {
         ageGroupId: s(c.ageGroupId),
         gender: s(c.gender),
         maxTeams: s(c.maxTeams),
+        gameFormat: s(c.gameFormat),
+        periods: s(c.periods),
+        periodMinutes: s(c.periodMinutes),
+        breakMinutes: s(c.breakMinutes),
       })),
     };
   } catch {
@@ -66,6 +73,18 @@ async function classCounts(supabase: Supabase, eventId: string) {
       { registered: c.registered, total: c.registered + c.waitlisted },
     ]),
   );
+}
+
+function classFields(c: ValidClass) {
+  return {
+    age_group_id: c.ageGroupId,
+    gender: c.gender,
+    max_teams: c.maxTeams,
+    game_format: c.gameFormat,
+    periods: c.periods,
+    period_minutes: c.periodMinutes,
+    break_minutes: c.breakMinutes,
+  };
 }
 
 function slotKey(date: string, start: string, end: string, venue: string, city: string) {
@@ -217,9 +236,7 @@ export async function saveEvent(
         classes.map(
           (c): TablesInsert<"event_classes"> => ({
             event_id: created.id,
-            age_group_id: c.ageGroupId,
-            gender: c.gender,
-            max_teams: c.maxTeams,
+            ...classFields(c),
           }),
         ),
       );
@@ -280,7 +297,7 @@ export async function saveEvent(
   for (const c of classes.filter((c) => c.id)) {
     const { error } = await supabase
       .from("event_classes")
-      .update({ age_group_id: c.ageGroupId, gender: c.gender, max_teams: c.maxTeams })
+      .update(classFields(c))
       .eq("id", c.id!);
     if (error) return { error: dbError(error) };
   }
@@ -290,9 +307,7 @@ export async function saveEvent(
     const { error } = await supabase.from("event_classes").insert(
       added.map((c) => ({
         event_id: eventId,
-        age_group_id: c.ageGroupId,
-        gender: c.gender,
-        max_teams: c.maxTeams,
+        ...classFields(c),
       })),
     );
     if (error) return { error: dbError(error) };

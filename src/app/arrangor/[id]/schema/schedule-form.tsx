@@ -1,21 +1,32 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { generateSchedule } from "@/lib/actions/schedule";
 import {
-  GAME_FORMATS,
-  type MatchSettingsForm,
+  DEFAULT_MATCHUP,
+  type ClassMatchup,
   type ScheduleForm as ScheduleFormValues,
 } from "@/lib/schedule-settings";
+import { LevelBadge } from "@/components/level-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const selectClass =
-  "h-9 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30";
-
-export type ScheduleFormClass = { id: string; label: string; teams: number };
+export type ScheduleFormClass = {
+  id: string;
+  label: string;
+  teams: number;
+  level: string | null;
+  /** Klassens matchregler, null om de inte är angivna */
+  rules: {
+    gameFormat: string;
+    periods: number;
+    periodMinutes: number;
+    breakMinutes: number;
+  } | null;
+};
 
 export function ScheduleForm({
   eventId,
@@ -35,13 +46,14 @@ export function ScheduleForm({
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setValues((v) => ({ ...v, [field]: e.target.value }));
 
-  const toggleOverride = (classId: string, on: boolean) =>
-    setValues((v) => {
-      const overrides = { ...v.overrides };
-      if (on) overrides[classId] = { ...v.defaults };
-      else delete overrides[classId];
-      return { ...v, overrides };
-    });
+  const setMatchup = (classId: string, patch: Partial<ClassMatchup>) =>
+    setValues((v) => ({
+      ...v,
+      matchups: {
+        ...v.matchups,
+        [classId]: { ...(v.matchups[classId] ?? DEFAULT_MATCHUP), ...patch },
+      },
+    }));
 
   return (
     <form action={action} className="grid gap-6">
@@ -91,59 +103,92 @@ export function ScheduleForm({
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm">
+      <section className="grid gap-3 rounded-xl border bg-card p-4 shadow-sm">
         <div>
-          <h2 className="font-display text-xl font-bold uppercase">Matcher</h2>
+          <h2 className="font-display text-xl font-bold uppercase">Klasser</h2>
           <p className="text-sm text-muted-foreground">
-            Gäller alla klasser, om du inte väljer egna inställningar för en klass nedan.
+            Varje klass spelar efter sina egna regler, t.ex. Easy Basket för åldersgruppen.
+            Reglerna ändras under{" "}
+            <Link href={`/arrangor/${eventId}`} className="underline">
+              Redigera sammandrag
+            </Link>
+            .
           </p>
         </div>
-        <MatchFields
-          idPrefix="gemensam"
-          value={values.defaults}
-          onChange={(defaults) => setValues((v) => ({ ...v, defaults }))}
-        />
-      </section>
-
-      <section className="grid gap-3 rounded-xl border bg-card p-4 shadow-sm">
-        <h2 className="font-display text-xl font-bold uppercase">Klasser</h2>
         {classes.length === 0 && (
           <p className="text-sm text-muted-foreground">Sammandraget har inga klasser.</p>
         )}
         <ul className="grid gap-3">
           {classes.map((c) => {
-            const override = values.overrides[c.id];
+            const m = values.matchups[c.id] ?? DEFAULT_MATCHUP;
+            const name = `matchup-${c.id}`;
             return (
               <li key={c.id} className="grid gap-3 rounded-lg border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
+                  <span className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{c.label}</span>
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {c.teams} {c.teams === 1 ? "anmält lag" : "anmälda lag"}
-                      {c.teams < 2 && " – får inga matcher"}
-                    </span>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(override)}
-                      onChange={(e) => toggleOverride(c.id, e.target.checked)}
-                    />
-                    Egna inställningar
-                  </label>
+                    <LevelBadge level={c.level} />
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {c.teams} {c.teams === 1 ? "anmält lag" : "anmälda lag"}
+                    {c.teams < 2 && " – får inga matcher"}
+                  </span>
                 </div>
-                {override && (
-                  <MatchFields
-                    idPrefix={c.id}
-                    value={override}
-                    onChange={(next) =>
-                      setValues((v) => ({
-                        ...v,
-                        overrides: { ...v.overrides, [c.id]: next },
-                      }))
-                    }
-                  />
+
+                {c.rules ? (
+                  <p className="text-sm">
+                    <span className="font-medium">{c.rules.gameFormat}</span>
+                    {" · "}
+                    {c.rules.periods} × {c.rules.periodMinutes} min
+                    {c.rules.periods > 1 && `, ${c.rules.breakMinutes} min paus`}
+                    <span className="text-muted-foreground">
+                      {" "}
+                      = {matchMinutes(c.rules)} min per match
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    Klassen saknar matchregler. Ange spelform och speltid under{" "}
+                    <Link href={`/arrangor/${eventId}`} className="underline">
+                      Redigera sammandrag
+                    </Link>
+                    .
+                  </p>
                 )}
+
+                <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                  <legend className="sr-only">Vilka möts i {c.label}?</legend>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={name}
+                      checked={m.matchup === "alla"}
+                      onChange={() => setMatchup(c.id, { matchup: "alla" })}
+                    />
+                    Alla möter alla
+                  </label>
+                  <label className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="radio"
+                      name={name}
+                      checked={m.matchup === "antal"}
+                      onChange={() => setMatchup(c.id, { matchup: "antal" })}
+                    />
+                    Varje lag spelar
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={20}
+                      aria-label={`Matcher per lag i ${c.label}`}
+                      className="h-8 w-16"
+                      value={m.matchesPerTeam}
+                      onChange={(e) => setMatchup(c.id, { matchesPerTeam: e.target.value })}
+                      disabled={m.matchup !== "antal"}
+                    />
+                    matcher
+                  </label>
+                </fieldset>
               </li>
             );
           })}
@@ -178,129 +223,15 @@ export function ScheduleForm({
           {pending ? "Skapar schema…" : hasSchedule ? "Skapa schemat på nytt" : "Skapa schema"}
         </Button>
         {hasSchedule && (
-          <p className="text-sm text-muted-foreground">
-            Det nuvarande schemat ersätts.
-          </p>
+          <p className="text-sm text-muted-foreground">Det nuvarande schemat ersätts.</p>
         )}
       </div>
     </form>
   );
 }
 
-function MatchFields({
-  idPrefix,
-  value,
-  onChange,
-}: {
-  idPrefix: string;
-  value: MatchSettingsForm;
-  onChange: (v: MatchSettingsForm) => void;
-}) {
-  const set = (field: keyof MatchSettingsForm) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      onChange({ ...value, [field]: e.target.value });
-  const id = (f: string) => `${idPrefix}-${f}`;
-  const periods = Number(value.periods) || 0;
-  const duration =
-    periods * (Number(value.periodMinutes) || 0) +
-    Math.max(0, periods - 1) * (Number(value.breakMinutes) || 0);
-
-  return (
-    <div className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Field label="Spelform" id={id("format")}>
-          <select
-            id={id("format")}
-            value={value.gameFormat}
-            onChange={set("gameFormat")}
-            className={selectClass}
-          >
-            {GAME_FORMATS.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Antal perioder" id={id("periods")}>
-          <Input
-            id={id("periods")}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={8}
-            value={value.periods}
-            onChange={set("periods")}
-            required
-          />
-        </Field>
-        <Field label="Minuter per period" id={id("periodMinutes")}>
-          <Input
-            id={id("periodMinutes")}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={60}
-            value={value.periodMinutes}
-            onChange={set("periodMinutes")}
-            required
-          />
-        </Field>
-        <Field label="Paus mellan perioder" id={id("breakMinutes")} hint="Minuter.">
-          <Input
-            id={id("breakMinutes")}
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={30}
-            value={value.breakMinutes}
-            onChange={set("breakMinutes")}
-            required
-          />
-        </Field>
-      </div>
-
-      <fieldset className="grid gap-2">
-        <legend className="mb-1 text-sm font-medium">Vilka möts?</legend>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name={id("matchup")}
-            className="mt-1"
-            checked={value.matchup === "alla"}
-            onChange={() => onChange({ ...value, matchup: "alla" })}
-          />
-          Alla möter alla i klassen
-        </label>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          <input
-            type="radio"
-            name={id("matchup")}
-            checked={value.matchup === "antal"}
-            onChange={() => onChange({ ...value, matchup: "antal" })}
-          />
-          Varje lag spelar
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={20}
-            aria-label="Matcher per lag"
-            className="h-8 w-16"
-            value={value.matchesPerTeam}
-            onChange={set("matchesPerTeam")}
-            disabled={value.matchup !== "antal"}
-          />
-          matcher
-        </label>
-      </fieldset>
-
-      <p className="text-sm text-muted-foreground">
-        En match tar {duration} minuter
-        {periods > 1 && ` (${periods} × ${value.periodMinutes} min + ${periods - 1} paus)`}.
-      </p>
-    </div>
-  );
+function matchMinutes(r: { periods: number; periodMinutes: number; breakMinutes: number }) {
+  return r.periods * r.periodMinutes + Math.max(0, r.periods - 1) * r.breakMinutes;
 }
 
 function Field({

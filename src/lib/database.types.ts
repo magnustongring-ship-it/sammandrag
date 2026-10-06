@@ -85,16 +85,34 @@ export type Database = {
           id: number;
           name: string;
           sort_order: number;
+          level: string | null;
+          game_format: string | null;
+          periods: number | null;
+          period_minutes: number | null;
+          break_minutes: number | null;
+          court_note: string | null;
         };
         Insert: {
           id?: number;
           name: string;
           sort_order?: number;
+          level?: string | null;
+          game_format?: string | null;
+          periods?: number | null;
+          period_minutes?: number | null;
+          break_minutes?: number | null;
+          court_note?: string | null;
         };
         Update: {
           id?: number;
           name?: string;
           sort_order?: number;
+          level?: string | null;
+          game_format?: string | null;
+          periods?: number | null;
+          period_minutes?: number | null;
+          break_minutes?: number | null;
+          court_note?: string | null;
         };
         Relationships: [];
       };
@@ -164,6 +182,10 @@ export type Database = {
           age_group_id: number;
           gender: Gender;
           max_teams: number;
+          game_format: string | null;
+          periods: number | null;
+          period_minutes: number | null;
+          break_minutes: number | null;
         };
         Insert: {
           id?: string;
@@ -171,6 +193,10 @@ export type Database = {
           age_group_id: number;
           gender: Gender;
           max_teams: number;
+          game_format?: string | null;
+          periods?: number | null;
+          period_minutes?: number | null;
+          break_minutes?: number | null;
         };
         Update: {
           id?: string;
@@ -178,6 +204,10 @@ export type Database = {
           age_group_id?: number;
           gender?: Gender;
           max_teams?: number;
+          game_format?: string | null;
+          periods?: number | null;
+          period_minutes?: number | null;
+          break_minutes?: number | null;
         };
         Relationships: [
           {

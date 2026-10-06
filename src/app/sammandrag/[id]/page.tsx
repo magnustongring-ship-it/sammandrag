@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { RegisterForm } from "./register-form";
 import { getScheduleMatches } from "@/lib/schedule";
 import { ScheduleView } from "@/components/schedule-view";
+import { LevelBadge } from "@/components/level-badge";
 
 export async function generateMetadata({ params }: PageProps<"/sammandrag/[id]">) {
   const { id } = await params;
@@ -53,7 +54,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
     supabase
       .from("events")
       .select(
-        "*, organizations(name), event_classes(id, gender, max_teams, age_groups(name, sort_order))",
+        "*, organizations(name), event_classes(*, age_groups(*))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -98,6 +99,11 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
         registered,
         waitlisted: countsKnown ? (count?.waitlisted ?? 0) : null,
         free: registered === null ? null : Math.max(0, c.max_teams - registered),
+        rules: c.game_format
+          ? `${c.game_format} · ${c.periods} × ${c.period_minutes} min`
+          : null,
+        level: c.age_groups?.level ?? null,
+        courtNote: c.age_groups?.court_note ?? null,
       };
     });
   const classLabel = new Map(classes.map((c) => [c.id, c.label]));
@@ -174,7 +180,18 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           <ul className="divide-y rounded-xl border bg-card shadow-sm">
             {classes.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
-                <span className="font-medium">{c.label}</span>
+                <span className="grid gap-0.5">
+                  <span className="flex flex-wrap items-center gap-2 font-medium">
+                    {c.label}
+                    <LevelBadge level={c.level} />
+                  </span>
+                  {c.rules && (
+                    <span className="text-xs text-muted-foreground">
+                      {c.rules}
+                      {c.courtNote && ` · ${c.courtNote}`}
+                    </span>
+                  )}
+                </span>
                 <span className="flex items-center gap-3 text-sm">
                   {c.registered === null ? (
                     <span className="text-muted-foreground">Max {c.max} lag</span>

@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { Button } from "@/components/ui/button";
 import { genderLabel } from "@/lib/calendar";
+import { getAgeGroupsWithRules } from "@/lib/age-groups";
 import { EventForm } from "../event-form";
 import { Participants } from "./participants";
 
@@ -24,14 +25,14 @@ export default async function EditEventPage({
 
   const { data: event } = await supabase
     .from("events")
-    .select("*, event_classes(id, age_group_id, gender, max_teams, age_groups(name, sort_order))")
+    .select("*, event_classes(*, age_groups(name, sort_order))")
     .eq("id", id)
     .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
   if (!event) notFound();
 
-  const [{ data: ageGroups }, { data: counts }] = await Promise.all([
-    supabase.from("age_groups").select("id, name").order("sort_order"),
+  const [ageGroups, { data: counts }] = await Promise.all([
+    getAgeGroupsWithRules(supabase),
     supabase.rpc("event_class_counts", { p_event_ids: [id] }),
   ]);
   const teamCounts = Object.fromEntries(
@@ -49,6 +50,10 @@ export default async function EditEventPage({
     ageGroupId: String(c.age_group_id),
     gender: c.gender,
     maxTeams: String(c.max_teams),
+    gameFormat: c.game_format ?? "",
+    periods: c.periods != null ? String(c.periods) : "",
+    periodMinutes: c.period_minutes != null ? String(c.period_minutes) : "",
+    breakMinutes: c.break_minutes != null ? String(c.break_minutes) : "",
   }));
 
   return (
@@ -105,7 +110,7 @@ export default async function EditEventPage({
       <EventForm
         eventId={event.id}
         status={event.status}
-        ageGroups={ageGroups ?? []}
+        ageGroups={ageGroups}
         teamCounts={teamCounts}
         initial={{
           title: event.title,

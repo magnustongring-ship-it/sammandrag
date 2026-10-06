@@ -12,32 +12,38 @@ import {
   type MatchSettings,
   type ScheduleClass,
 } from "@/lib/scheduler";
-import { parseMatchSettings, type ScheduleForm } from "@/lib/schedule-settings";
+import {
+  DEFAULT_MATCHUP,
+  type SavedClassSettings,
+  type ScheduleForm,
+} from "@/lib/schedule-settings";
 import type { Json } from "@/lib/database.types";
 
 export type ScheduleState =
-  | { error?: string; message?: string; warnings?: string[] }
-  | undefined;
+  { error?: string; message?: string; warnings?: string[] } | undefined;
 
 const MISSING_TABLES =
   "Spelschemat är inte aktiverat i databasen ännu. Kör migreringen supabase/migrations/20261006000000_schedule.sql i Supabase → SQL Editor.";
 
-function scheduleError(error: { code?: string; message: string }, context: string) {
+function scheduleError(
+  error: { code?: string; message: string },
+  context: string,
+) {
   // Tabell saknas (migreringen inte körd)
-  if (error.code === "42P01" || error.code === "PGRST205") return MISSING_TABLES;
+  if (error.code === "42P01" || error.code === "PGRST205")
+    return MISSING_TABLES;
   return friendlyError(error, context);
 }
 
 function parseForm(raw: FormDataEntryValue | null): ScheduleForm | null {
   try {
     const v = JSON.parse(String(raw ?? ""));
-    if (typeof v !== "object" || !v || typeof v.defaults !== "object") return null;
+    if (typeof v !== "object" || !v) return null;
     return {
       startTime: String(v.startTime ?? ""),
       courts: String(v.courts ?? ""),
       minRestMinutes: String(v.minRestMinutes ?? ""),
-      defaults: v.defaults,
-      overrides: typeof v.overrides === "object" && v.overrides ? v.overrides : {},
+      matchups: typeof v.matchups === "object" && v.matchups ? v.matchups : {},
     };
   } catch {
     return null;
@@ -61,16 +67,17 @@ export async function generateSchedule(
   }
   const minRest = Number(form.minRestMinutes);
   if (!Number.isInteger(minRest) || minRest < 0 || minRest > 240) {
-    return { error: "Minsta tid mellan två matcher måste vara mellan 0 och 240 minuter." };
+    return {
+      error:
+        "Minsta tid mellan två matcher måste vara mellan 0 och 240 minuter.",
+    };
   }
-  const defaults = parseMatchSettings(form.defaults, "");
-  if (typeof defaults === "string") return { error: defaults };
 
   const supabase = await createClient();
   const { data: event } = await supabase
     .from("events")
     .select(
-      "id, organizer_org_id, end_time, event_classes(id, gender, age_groups(name, sort_order), registrations(id, team_name, status, created_at, organizations(name)))",
+      "id, organizer_org_id, end_time, event_classes(*, age_groups(name, sort_order), registrations(id, team_name, status, created_at, organizations(name)))",
     )
     .eq("id", eventId)
     .maybeSingle();
@@ -84,22 +91,59 @@ export async function generateSchedule(
       a.gender.localeCompare(b.gender),
   );
 
-  const classSettings: Record<string, MatchSettings> = {};
+  // Matchreglerna (spelform, perioder, paus) kommer från klassen själv;
+  // formuläret bestämmer bara vilka som möts.
+  const classSettings: Record<string, SavedClassSettings> = {};
   const classes: ScheduleClass[] = [];
   for (const c of sortedClasses) {
     const label = `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`;
-    let settings = defaults;
-    const override = form.overrides[c.id];
-    if (override) {
-      const parsed = parseMatchSettings(override, `${label}: `);
-      if (typeof parsed === "string") return { error: parsed };
-      settings = parsed;
-      classSettings[c.id] = parsed;
+    const chosen = form.matchups[c.id] ?? DEFAULT_MATCHUP;
+    const matchup = chosen.matchup === "antal" ? "antal" : "alla";
+    const matchesPerTeam = Number(chosen.matchesPerTeam);
+    if (
+      matchup === "antal" &&
+      (!Number.isInteger(matchesPerTeam) ||
+        matchesPerTeam < 1 ||
+        matchesPerTeam > 20)
+    ) {
+      return {
+        error: `${label}: antal matcher per lag måste vara mellan 1 och 20.`,
+      };
     }
+    classSettings[c.id] = {
+      matchup,
+      matchesPerTeam: matchup === "antal" ? matchesPerTeam : undefined,
+    };
+
     const teams = c.registrations
       .filter((r) => r.status === "anmald")
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      .map((r) => ({ id: r.id, name: r.team_name, club: r.organizations?.name ?? null }));
+      .map((r) => ({
+        id: r.id,
+        name: r.team_name,
+        club: r.organizations?.name ?? null,
+      }));
+    if (
+      !c.game_format ||
+      !c.periods ||
+      !c.period_minutes ||
+      c.break_minutes == null
+    ) {
+      if (teams.length >= 2) {
+        return {
+          error: `${label} saknar matchregler. Ange spelform och speltid för klassen under Redigera sammandrag.`,
+        };
+      }
+      // Färre än två lag: klassen hoppas ändå över i schemat.
+    }
+    const settings: MatchSettings = {
+      gameFormat: c.game_format ?? "",
+      periods: c.periods ?? 1,
+      periodMinutes: c.period_minutes ?? 1,
+      breakMinutes: c.break_minutes ?? 0,
+      matchup,
+      matchesPerTeam: Number.isInteger(matchesPerTeam) ? matchesPerTeam : 3,
+    };
     classes.push({ id: c.id, label, teams, settings });
   }
 
@@ -119,7 +163,7 @@ export async function generateSchedule(
   if (result.endMinutes! >= 24 * 60) {
     return {
       error:
-        "Schemat skulle sluta efter midnatt. Lägg till fler planer, korta perioderna eller minska antalet matcher per lag.",
+        "Schemat skulle sluta efter midnatt. Lägg till fler planer, minska vilotiden eller antalet matcher per lag.",
     };
   }
 
@@ -128,23 +172,21 @@ export async function generateSchedule(
     start_time: form.startTime,
     courts,
     min_rest_minutes: minRest,
-    game_format: defaults.gameFormat,
-    periods: defaults.periods,
-    period_minutes: defaults.periodMinutes,
-    break_minutes: defaults.breakMinutes,
-    matchup: defaults.matchup,
-    matches_per_team: defaults.matchesPerTeam,
     class_settings: classSettings as unknown as Json,
     generated_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
-  if (saveError) return { error: scheduleError(saveError, "Kunde inte spara inställningarna") };
+  if (saveError)
+    return {
+      error: scheduleError(saveError, "Kunde inte spara inställningarna"),
+    };
 
   const { error: deleteError } = await supabase
     .from("schedule_matches")
     .delete()
     .eq("event_id", eventId);
-  if (deleteError) return { error: scheduleError(deleteError, "Kunde inte ersätta schemat") };
+  if (deleteError)
+    return { error: scheduleError(deleteError, "Kunde inte ersätta schemat") };
 
   const { error: insertError } = await supabase.from("schedule_matches").insert(
     result.matches.map((m) => ({
@@ -162,9 +204,12 @@ export async function generateSchedule(
       away_club: m.away.club,
     })),
   );
-  if (insertError) return { error: scheduleError(insertError, "Kunde inte spara matcherna") };
+  if (insertError)
+    return { error: scheduleError(insertError, "Kunde inte spara matcherna") };
 
-  const warnings = result.skipped.map((s) => `${s.label}: ${s.reason.toLowerCase()}, inga matcher.`);
+  const warnings = result.skipped.map(
+    (s) => `${s.label}: ${s.reason.toLowerCase()}, inga matcher.`,
+  );
   const end = fromMinutes(result.endMinutes!);
   if (event.end_time && result.endMinutes! > toMinutes(event.end_time)) {
     warnings.push(
@@ -212,16 +257,23 @@ export async function setSchedulePublished(
 }
 
 /** Tar bort schemat och alla matcher. */
-export async function deleteSchedule(eventId: string): Promise<{ error?: string }> {
+export async function deleteSchedule(
+  eventId: string,
+): Promise<{ error?: string }> {
   const { supabase, ok } = await requireOwnEvent(eventId);
   if (!ok) return { error: "Sammandraget hittades inte." };
   const { error: matchError } = await supabase
     .from("schedule_matches")
     .delete()
     .eq("event_id", eventId);
-  if (matchError) return { error: scheduleError(matchError, "Kunde inte ta bort schemat") };
-  const { error } = await supabase.from("event_schedules").delete().eq("event_id", eventId);
-  if (error) return { error: scheduleError(error, "Kunde inte ta bort schemat") };
+  if (matchError)
+    return { error: scheduleError(matchError, "Kunde inte ta bort schemat") };
+  const { error } = await supabase
+    .from("event_schedules")
+    .delete()
+    .eq("event_id", eventId);
+  if (error)
+    return { error: scheduleError(error, "Kunde inte ta bort schemat") };
 
   revalidatePath(`/arrangor/${eventId}/schema`);
   revalidatePath(`/sammandrag/${eventId}`);
