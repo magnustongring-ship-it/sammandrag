@@ -23,8 +23,8 @@ export default async function SignupPage() {
         <CardHeader>
           <CardTitle className="font-display text-2xl font-bold uppercase">Skapa konto</CardTitle>
           <CardDescription>
-            Steg 1 av 2. Efter att du bekräftat din e-post fyller du i uppgifter
-            om din förening.
+            Steg 1 av 2. Efter att du bekräftat din e-post ansluter du till din
+            förening. Är du bara domare kan du hoppa över det steget.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -554,6 +554,43 @@ export type Database = {
           created_at: string;
         }[];
       };
+      my_referee_matches: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          match_id: string;
+          event_id: string;
+          event_title: string;
+          event_date: string;
+          event_status: EventStatus;
+          venue_name: string;
+          city: string | null;
+          organizer_name: string;
+          starts_at: string;
+          ends_at: string;
+          court: number;
+          game_format: string;
+          age_group: string;
+          gender: Gender;
+          home_team: string;
+          away_team: string;
+          referee_slot: number;
+          partner_name: string | null;
+        }[];
+      };
+      my_referee_applications: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          application_id: string;
+          event_id: string;
+          event_title: string;
+          event_date: string;
+          event_status: EventStatus;
+          venue_name: string;
+          city: string | null;
+          level: RefereeLevel;
+          assigned_matches: number;
+        }[];
+      };
       is_event_organizer: { Args: { p_event_id: string }; Returns: boolean };
       my_org: { Args: Record<PropertyKey, never>; Returns: string };
       is_my_org_admin: { Args: Record<PropertyKey, never>; Returns: boolean };

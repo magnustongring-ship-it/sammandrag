@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { homePathFor, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -104,6 +105,14 @@ export default async function OrganizationPage({
           )}
         </CardContent>
       </Card>
+
+      <p className="max-w-md text-center text-sm text-muted-foreground">
+        Är du bara domare?{" "}
+        <Link href="/mina-matcher" className="font-medium text-foreground underline">
+          Hoppa över och se dina matcher
+        </Link>
+        .
+      </p>
 
       {!pending && (
         <Card className="w-full max-w-md shadow-md">

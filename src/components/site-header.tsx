@@ -22,6 +22,7 @@ export async function SiteHeader() {
           },
         isOrgAdmin(session) && { href: "/medlemmar", label: "Medlemmar" },
         isSuperAdmin(session) && { href: "/admin", label: "Admin" },
+        { href: "/mina-matcher", label: "Mina matcher" },
         { href: "/domare", label: "Bli domare" },
       ].filter((l): l is { href: string; label: string } => Boolean(l))
     : [];
@@ -60,7 +61,7 @@ export async function SiteHeader() {
         ) : (
           <>
             {/* Dator och surfplatta */}
-            <nav className="hidden items-center gap-1 text-sm md:flex">
+            <nav className="hidden items-center gap-1 text-sm lg:flex">
               {session.organization && (
                 <span className="mr-2 text-brand-foreground/70">
                   {session.organization.name}

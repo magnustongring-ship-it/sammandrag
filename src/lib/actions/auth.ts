@@ -93,6 +93,10 @@ export async function signIn(
 
   const session = await getSession();
   revalidatePath("/", "layout");
+  // Utan förening (t.ex. en domare) finns inget föreningssteg att tvinga fram.
+  if (session && !session.organization && session.profile.role !== "superadmin") {
+    redirect("/mina-matcher");
+  }
   redirect(session ? homePathFor(session) : "/");
 }
 

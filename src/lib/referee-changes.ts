@@ -52,7 +52,15 @@ export function refereeChanges(before: MatchSnapshot[], after: MatchSnapshot[]):
 /** E-posttext till en domare om ändrade uppdrag. */
 export function refereeEmail(
   change: RefereeChange,
-  ctx: { name: string; eventTitle: string; eventDate: string; venue: string; url: string },
+  ctx: {
+    name: string;
+    eventTitle: string;
+    eventDate: string;
+    venue: string;
+    url: string;
+    /** Sidan där en inloggad domare ser alla sina matcher. */
+    accountUrl?: string;
+  },
 ): { subject: string; text: string } {
   const lines = (list: MatchSnapshot[]) => list.map((m) => `  • ${m.label}`);
   const onlyAdded = change.removed.length === 0;
@@ -81,6 +89,13 @@ export function refereeEmail(
     "",
     "Spelschemat:",
     ctx.url,
+    ...(ctx.accountUrl
+      ? [
+          "",
+          "Se alla dina matcher genom att skapa ett konto eller logga in med den här e-postadressen:",
+          ctx.accountUrl,
+        ]
+      : []),
     "",
     "Svara på det här mejlet för att nå arrangören.",
     "",

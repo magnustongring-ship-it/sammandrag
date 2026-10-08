@@ -69,6 +69,7 @@ export async function notifyRefereeChanges(
     eventDate: formatDate(event.event_date, { weekday: "long", day: "numeric", month: "long" }),
     venue: [event.venue_name, event.city].filter(Boolean).join(", "),
     url: `${origin}/sammandrag/${eventId}`,
+    accountUrl: `${origin}/mina-matcher`,
   };
 
   const mails = changes.flatMap((change) => {
