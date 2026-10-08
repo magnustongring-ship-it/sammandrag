@@ -18,7 +18,7 @@ import {
   genderLabel,
   todayInStockholm,
 } from "@/lib/calendar";
-import { isRegistrationOpen, lastRegistrationDay } from "@/lib/registration";
+import { classSuffix, isRegistrationOpen, lastRegistrationDay } from "@/lib/registration";
 import type { Tables } from "@/lib/database.types";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
@@ -97,6 +97,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
       return {
         id: c.id,
         label: `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`,
+        suffix: classSuffix(c.gender, c.age_groups?.name ?? ""),
         max: c.max_teams,
         registered,
         waitlisted: countsKnown ? (count?.waitlisted ?? 0) : null,

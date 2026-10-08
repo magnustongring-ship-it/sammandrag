@@ -36,6 +36,8 @@ export type CalendarFilter = {
   ageGroupId?: number;
   gender?: Gender;
   city?: string;
+  /** Visa bara publicerade, inte avbokade */
+  hideCancelled?: boolean;
 };
 
 type EventRow = {
@@ -95,7 +97,7 @@ export async function getCalendarEvents(
     .select(
       `${EVENT_FIELDS}, event_classes${classFilter ? "!inner" : ""}(${CLASS_FIELDS})`,
     )
-    .in("status", ["publicerad", "avbokad"])
+    .in("status", filter.hideCancelled ? ["publicerad"] : ["publicerad", "avbokad"])
     .gte("event_date", filter.from)
     .order("event_date")
     .order("start_time", { nullsFirst: true });

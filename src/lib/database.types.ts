@@ -463,6 +463,15 @@ export type Database = {
         Args: { p_registration_id: string };
         Returns: undefined;
       };
+      move_registration: {
+        Args: {
+          p_registration_id: string;
+          p_class_id: string;
+          p_status: string;
+          p_team_name: string;
+        };
+        Returns: string;
+      };
       event_class_counts: {
         Args: { p_event_ids: string[] };
         Returns: {

@@ -365,7 +365,7 @@ export async function deleteDraft(eventId: string): Promise<ActionResult> {
     .eq("status", "utkast")
     .select("id");
   if (error) return { error: dbError(error) };
-  if (!data?.length) return { error: "Bara utkast kan tas bort." };
+  if (!data?.length) return { error: "Bara utkast kan raderas." };
 
   revalidatePath("/arrangor");
   redirect("/arrangor");

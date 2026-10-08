@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { formatDate, formatTimeRange, genderLabel } from "@/lib/calendar";
+import { Clock } from "lucide-react";
+import { formatDate, formatTimeRange, genderLabel, nowInStockholm } from "@/lib/calendar";
+import { deadlineStatus } from "@/lib/registration";
 import type { CalendarEvent } from "@/lib/events";
 import { cn } from "@/lib/utils";
 import { AvailabilityText, classChipClass, eventEdgeClass } from "./availability";
@@ -34,6 +36,7 @@ export function EventCard({
             {[event.venue, event.city].filter(Boolean).join(", ")}
             {event.organizer && ` · ${event.organizer}`}
           </p>
+          {!cancelled && <Deadline event={event} />}
         </div>
         <div className="text-sm">
           <AvailabilityText event={event} />
@@ -56,5 +59,30 @@ export function EventCard({
         </ul>
       )}
     </Link>
+  );
+}
+
+function Deadline({ event }: { event: CalendarEvent }) {
+  const lastDay = event.registrationDeadline ?? event.date;
+  const status = deadlineStatus(lastDay, nowInStockholm());
+
+  if (status.kind === "soon") {
+    return (
+      <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2 py-0.5 text-sm font-semibold text-amber-900 dark:bg-amber-900 dark:text-amber-100">
+        <Clock className="size-4" aria-hidden="true" />
+        Anmälan stänger i kväll –{" "}
+        {status.hoursLeft < 1
+          ? "under en timme kvar"
+          : `${status.hoursLeft} timmar kvar`}
+      </p>
+    );
+  }
+  return (
+    <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+      <Clock className="size-4" aria-hidden="true" />
+      {status.kind === "closed"
+        ? "Anmälan stängd"
+        : `Sista anmälningsdag ${formatDate(lastDay)}`}
+    </p>
   );
 }

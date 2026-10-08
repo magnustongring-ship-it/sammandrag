@@ -449,7 +449,38 @@ function ClassRules({
           onChange={(breakMinutes) => onChange({ breakMinutes })}
         />
       </div>
+      <MatchLength row={row} />
     </div>
+  );
+}
+
+/** Matchtid räknad som i spelschemat: perioder × längd + pauser mellan perioder. */
+function MatchLength({ row }: { row: ClassRow }) {
+  if (!row.gameFormat) return null;
+  const periods = Number(row.periods);
+  const minutes = Number(row.periodMinutes);
+  const pause = Number(row.breakMinutes);
+  const valid =
+    Number.isInteger(periods) &&
+    periods >= 1 &&
+    Number.isInteger(minutes) &&
+    minutes >= 1 &&
+    Number.isInteger(pause) &&
+    pause >= 0 &&
+    row.periodMinutes !== "" &&
+    row.breakMinutes !== "";
+  if (!valid) return null;
+
+  const pauses = periods - 1;
+  const total = periods * minutes + pauses * pause;
+  return (
+    <p className="text-sm" aria-live="polite">
+      <span className="font-semibold">Matchtid: {total} minuter</span>{" "}
+      <span className="text-muted-foreground">
+        ({periods} × {minutes} min spel
+        {pauses > 0 && ` + ${pauses} × ${pause} min paus`})
+      </span>
+    </p>
   );
 }
 

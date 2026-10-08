@@ -44,7 +44,8 @@ function parseForm(raw: FormDataEntryValue | null): ScheduleForm | null {
     return {
       startTime: String(v.startTime ?? ""),
       courts: String(v.courts ?? ""),
-      minRestMinutes: String(v.minRestMinutes ?? ""),
+      // minRestMinutes: namnet i äldre versioner av formuläret
+      courtGapMinutes: String(v.courtGapMinutes ?? v.minRestMinutes ?? ""),
       matchups: typeof v.matchups === "object" && v.matchups ? v.matchups : {},
     };
   } catch {
@@ -67,11 +68,11 @@ export async function generateSchedule(
   if (!Number.isInteger(courts) || courts < 1 || courts > 20) {
     return { error: "Antal planer måste vara ett heltal mellan 1 och 20." };
   }
-  const minRest = Number(form.minRestMinutes);
-  if (!Number.isInteger(minRest) || minRest < 0 || minRest > 240) {
+  const courtGap = Number(form.courtGapMinutes);
+  if (!Number.isInteger(courtGap) || courtGap < 0 || courtGap > 240) {
     return {
       error:
-        "Minsta tid mellan två matcher måste vara mellan 0 och 240 minuter.",
+        "Tid mellan matcherna måste vara mellan 0 och 240 minuter.",
     };
   }
 
@@ -152,7 +153,7 @@ export async function generateSchedule(
   const result = buildSchedule({
     startMinutes: toMinutes(form.startTime),
     courts,
-    minRestMinutes: minRest,
+    courtGapMinutes: courtGap,
     classes,
   });
 
@@ -165,7 +166,7 @@ export async function generateSchedule(
   if (result.endMinutes! >= 24 * 60) {
     return {
       error:
-        "Schemat skulle sluta efter midnatt. Lägg till fler planer, minska vilotiden eller antalet matcher per lag.",
+        "Schemat skulle sluta efter midnatt. Lägg till fler planer, korta tiden mellan matcherna eller minska antalet matcher per lag.",
     };
   }
 
@@ -173,7 +174,8 @@ export async function generateSchedule(
     event_id: eventId,
     start_time: form.startTime,
     courts,
-    min_rest_minutes: minRest,
+    // Kolumnen heter min_rest_minutes men är tiden mellan matcher på en plan.
+    min_rest_minutes: courtGap,
     class_settings: classSettings as unknown as Json,
     generated_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

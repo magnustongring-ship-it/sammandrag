@@ -55,6 +55,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
   const kon = single(params.kon);
   const gender = genders.includes(kon as Gender) ? (kon as Gender) : undefined;
   const ort = single(params.ort);
+  const dolj = single(params.dolj) === "avbokade" ? "avbokade" : undefined;
 
   const values: FilterValues = {
     vy: view,
@@ -62,6 +63,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
     alder: ageGroupId !== undefined ? String(ageGroupId) : undefined,
     kon: gender,
     ort,
+    dolj,
   };
 
   const grid = monthGrid(month);
@@ -73,6 +75,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
     ageGroupId,
     gender,
     city: ort,
+    hideCancelled: dolj === "avbokade",
   });
 
   return (

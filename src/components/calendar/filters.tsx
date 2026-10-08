@@ -13,6 +13,8 @@ export type FilterValues = {
   alder?: string;
   kon?: string;
   ort?: string;
+  /** "avbokade" döljer avbokade sammandrag */
+  dolj?: string;
 };
 
 const selectClass =
@@ -31,7 +33,7 @@ export function CalendarFilters({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const submit = () => formRef.current?.requestSubmit();
-  const active = Boolean(values.alder || values.kon || values.ort);
+  const active = Boolean(values.alder || values.kon || values.ort || values.dolj);
 
   return (
     <form
@@ -90,7 +92,19 @@ export function CalendarFilters({
         />
       </div>
 
-      <div className="flex gap-2">
+      <label className="flex items-center gap-2 text-sm sm:col-span-full">
+        <input
+          type="checkbox"
+          name="dolj"
+          value="avbokade"
+          defaultChecked={values.dolj === "avbokade"}
+          onChange={submit}
+          className="size-4 accent-primary"
+        />
+        Dölj avbokade sammandrag
+      </label>
+
+      <div className="flex gap-2 sm:col-start-4 sm:row-start-1">
         <Button type="submit">Filtrera</Button>
         {active && (
           <Button asChild variant="ghost">

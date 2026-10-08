@@ -33,7 +33,7 @@ export default async function SchedulePage({
   const { data: event } = await supabase
     .from("events")
     .select(
-      "id, title, status, start_time, event_classes(*, age_groups(*), registrations(id, status))",
+      "id, title, status, start_time, end_time, event_classes(*, age_groups(*), registrations(id, status))",
     )
     .eq("id", id)
     .eq("organizer_org_id", session.organization.id)
@@ -153,6 +153,7 @@ export default async function SchedulePage({
 
       <ScheduleForm
         eventId={id}
+        eventEndTime={event.end_time?.slice(0, 5) ?? null}
         hasSchedule={matches.length > 0}
         classes={classes.map((c) => ({
           id: c.id,
@@ -168,7 +169,7 @@ export default async function SchedulePage({
             "09:00"
           ).slice(0, 5),
           courts: String(schedule?.courts ?? 1),
-          minRestMinutes: String(schedule?.min_rest_minutes ?? 20),
+          courtGapMinutes: String(schedule?.min_rest_minutes ?? 5),
           matchups,
         }}
       />

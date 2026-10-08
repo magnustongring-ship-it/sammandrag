@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatTimeRange, todayInStockholm } from "@/lib/calendar";
 import type { Tables } from "@/lib/database.types";
 import { EventStatusBadge } from "@/components/event-status-badge";
+import { ConfirmButton } from "@/components/confirm-button";
+import { deleteDraft } from "@/lib/actions/events";
 import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/errors";
 
@@ -94,10 +96,10 @@ function EventList({
   return (
     <ul className="divide-y rounded-xl border bg-card shadow-sm">
       {events.map((e) => (
-        <li key={e.id}>
+        <li key={e.id} className="flex flex-wrap items-center gap-2 pr-4 hover:bg-accent/60">
           <Link
             href={`/arrangor/${e.id}`}
-            className="flex flex-wrap items-center justify-between gap-2 p-4 hover:bg-accent/60"
+            className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 p-4"
           >
             <div className="min-w-0">
               <p className="font-medium">{e.title}</p>
@@ -115,6 +117,15 @@ function EventList({
             </div>
             <EventStatusBadge status={e.status} />
           </Link>
+          {e.status === "utkast" && (
+            <ConfirmButton
+              action={deleteDraft.bind(null, e.id)}
+              label="Radera"
+              confirmLabel="Ja, radera"
+              question={`Radera utkastet "${e.title}"? Det går inte att få tillbaka.`}
+              variant="destructive"
+            />
+          )}
         </li>
       ))}
     </ul>

@@ -7,7 +7,8 @@ import { deleteDraft, setEventStatus } from "@/lib/actions/events";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { Button } from "@/components/ui/button";
-import { genderLabel } from "@/lib/calendar";
+import { genderLabel, todayInStockholm } from "@/lib/calendar";
+import { isRegistrationOpen } from "@/lib/registration";
 import { getAgeGroupsWithRules } from "@/lib/age-groups";
 import { EventForm } from "../event-form";
 import { Participants } from "./participants";
@@ -65,6 +66,17 @@ export default async function EditEventPage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold uppercase">{event.title}</h1>
           <EventStatusBadge status={event.status} />
+          {event.status === "utkast" && (
+            <div className="ml-auto">
+              <ConfirmButton
+                action={deleteDraft.bind(null, event.id)}
+                label="Radera utkast"
+                confirmLabel="Ja, radera"
+                question="Utkastet raderas permanent och går inte att få tillbaka."
+                variant="destructive"
+              />
+            </div>
+          )}
           {event.status !== "utkast" && (
             <div className="ml-auto flex flex-wrap gap-2">
               <Button asChild variant="outline">
@@ -105,6 +117,9 @@ export default async function EditEventPage({
       {event.status !== "utkast" && (
         <Participants
           eventId={event.id}
+          canMove={
+            event.status === "publicerad" && !isRegistrationOpen(event, todayInStockholm())
+          }
           classes={sortedClasses.map((c) => ({
             id: c.id,
             label: `${c.age_groups?.name ?? "?"} ${genderLabel[c.gender].toLowerCase()}`,
@@ -161,9 +176,9 @@ export default async function EditEventPage({
           {event.status === "utkast" && (
             <ConfirmButton
               action={deleteDraft.bind(null, event.id)}
-              label="Ta bort utkast"
-              confirmLabel="Ja, ta bort"
-              question="Utkastet tas bort permanent."
+              label="Radera utkast"
+              confirmLabel="Ja, radera"
+              question="Utkastet raderas permanent och går inte att få tillbaka."
               variant="destructive"
             />
           )}

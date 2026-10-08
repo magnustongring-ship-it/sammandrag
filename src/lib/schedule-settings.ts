@@ -12,7 +12,8 @@ export type ClassMatchup = { matchup: Matchup; matchesPerTeam: string };
 export type ScheduleForm = {
   startTime: string;
   courts: string;
-  minRestMinutes: string;
+  /** Minuter mellan två matcher på samma plan */
+  courtGapMinutes: string;
   /** Per klass-id */
   matchups: Record<string, ClassMatchup>;
 };

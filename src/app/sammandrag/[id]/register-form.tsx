@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { registerTeam, type RegisterValues } from "@/lib/actions/registrations";
 import { FormMessage } from "@/components/form-message";
+import { teamNameWithClass } from "@/lib/registration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,8 @@ const selectClass =
 export type RegisterClassOption = {
   id: string;
   label: string;
+  /** Klassens förkortning som läggs efter lagnamnet, t.ex. "PU8" */
+  suffix: string;
   /** null om antalet inte är känt */
   free: number | null;
 };
@@ -79,8 +82,21 @@ export function RegisterForm({
           value={values.teamName}
           onChange={set("teamName")}
           maxLength={100}
+          placeholder="t.ex. Borlänge Basket"
           required
         />
+        {selected && values.teamName.trim() ? (
+          <p className="text-xs text-muted-foreground">
+            Sparas som:{" "}
+            <span className="font-semibold text-foreground">
+              {teamNameWithClass(values.teamName, selected.suffix)}
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Klassens förkortning läggs till efter namnet, t.ex. PU8 för pojkar U8.
+          </p>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">

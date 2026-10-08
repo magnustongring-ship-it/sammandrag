@@ -5,6 +5,13 @@ import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { generateSchedule } from "@/lib/actions/schedule";
 import {
+  buildSchedule,
+  fromMinutes,
+  toMinutes,
+  type ScheduleClass,
+  type ScheduleResult,
+} from "@/lib/scheduler";
+import {
   DEFAULT_MATCHUP,
   type ClassMatchup,
   type ScheduleForm as ScheduleFormValues,
@@ -33,8 +40,11 @@ export function ScheduleForm({
   classes,
   initial,
   hasSchedule,
+  eventEndTime,
 }: {
   eventId: string;
+  /** Sammandragets sluttid "HH:MM", för varning om schemat blir för långt */
+  eventEndTime: string | null;
   classes: ScheduleFormClass[];
   initial: ScheduleFormValues;
   hasSchedule: boolean;
@@ -43,9 +53,17 @@ export function ScheduleForm({
   // Säkerställ matchups även om tillståndet kommer från en äldre version av
   // formuläret (t.ex. en sida som var öppen när koden uppdaterades).
   const [rawValues, setValues] = useState<ScheduleFormValues>(initial);
-  const values = { ...rawValues, matchups: rawValues.matchups ?? initial.matchups ?? {} };
+  const legacy = rawValues as ScheduleFormValues & { minRestMinutes?: string };
+  const values = {
+    ...rawValues,
+    courtGapMinutes:
+      rawValues.courtGapMinutes ?? legacy.minRestMinutes ?? initial.courtGapMinutes,
+    matchups: rawValues.matchups ?? initial.matchups ?? {},
+  };
 
-  const setTop = (field: "startTime" | "courts" | "minRestMinutes") =>
+  const estimate = estimateSchedule(values, classes);
+
+  const setTop = (field: "startTime" | "courts" | "courtGapMinutes") =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setValues((v) => ({ ...v, [field]: e.target.value }));
 
@@ -88,18 +106,18 @@ export function ScheduleForm({
             />
           </Field>
           <Field
-            label="Minst tid mellan två matcher"
-            id="minRestMinutes"
-            hint="Minuter som ett lag vilar mellan sina matcher."
+            label="Tid mellan matcherna"
+            id="courtGapMinutes"
+            hint="Minuter mellan två matcher på samma plan. Lagen vilar alltid minst en match mellan sina matcher."
           >
             <Input
-              id="minRestMinutes"
+              id="courtGapMinutes"
               type="number"
               inputMode="numeric"
               min={0}
               max={240}
-              value={values.minRestMinutes}
-              onChange={setTop("minRestMinutes")}
+              value={values.courtGapMinutes}
+              onChange={setTop("courtGapMinutes")}
               required
             />
           </Field>
@@ -192,11 +210,15 @@ export function ScheduleForm({
                     matcher
                   </label>
                 </fieldset>
+
+                <ClassEstimate estimate={estimate} classId={c.id} />
               </li>
             );
           })}
         </ul>
       </section>
+
+      <TotalEstimate estimate={estimate} eventEndTime={eventEndTime} />
 
       {state?.error && (
         <p
@@ -256,5 +278,165 @@ function Field({
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
+  );
+}
+
+type Estimate =
+  | { ok: false; reason: string }
+  | {
+      ok: true;
+      courts: number;
+      courtGap: number;
+      total: ScheduleResult;
+      startMinutes: number;
+      perClass: Map<
+        string,
+        { matches: number; matchMinutes: number; playMinutes: number; aloneMinutes: number; endsAt: number }
+      >;
+    };
+
+/**
+ * Beräknad tidsåtgång med samma schemaläggning som "Skapa schema", med
+ * påhittade lag i samma antal som de anmälda.
+ */
+function estimateSchedule(
+  values: ScheduleFormValues,
+  classes: ScheduleFormClass[],
+): Estimate {
+  const courts = Number(values.courts);
+  const courtGap = Number(values.courtGapMinutes);
+  if (!/^\d{2}:\d{2}$/.test(values.startTime)) return { ok: false, reason: "Ange starttid" };
+  if (!Number.isInteger(courts) || courts < 1 || courts > 20) {
+    return { ok: false, reason: "Ange antal planer (1–20)" };
+  }
+  if (!Number.isInteger(courtGap) || courtGap < 0 || courtGap > 240) {
+    return { ok: false, reason: "Ange tid mellan matcherna (0–240 min)" };
+  }
+
+  const scheduleClasses: ScheduleClass[] = [];
+  for (const c of classes) {
+    if (!c.rules || c.teams < 2) continue;
+    const m = values.matchups[c.id] ?? DEFAULT_MATCHUP;
+    const perTeam = Number(m.matchesPerTeam);
+    if (m.matchup === "antal" && (!Number.isInteger(perTeam) || perTeam < 1 || perTeam > 20)) {
+      return { ok: false, reason: `Ange antal matcher per lag för ${c.label} (1–20)` };
+    }
+    scheduleClasses.push({
+      id: c.id,
+      label: c.label,
+      teams: Array.from({ length: c.teams }, (_, i) => ({ id: `${c.id}-${i}`, name: `${i + 1}`, club: null })),
+      settings: {
+        ...c.rules,
+        matchup: m.matchup,
+        matchesPerTeam: Number.isInteger(perTeam) ? perTeam : 3,
+      },
+    });
+  }
+
+  const startMinutes = toMinutes(values.startTime);
+  const run = (list: ScheduleClass[]) =>
+    buildSchedule({ startMinutes, courts, courtGapMinutes: courtGap, classes: list });
+  const total = run(scheduleClasses);
+
+  const perClass = new Map<
+    string,
+    { matches: number; matchMinutes: number; playMinutes: number; aloneMinutes: number; endsAt: number }
+  >();
+  for (const sc of scheduleClasses) {
+    const alone = run([sc]);
+    const inTotal = total.matches.filter((m) => m.classId === sc.id);
+    const perMatch = matchMinutes(sc.settings);
+    perClass.set(sc.id, {
+      matches: alone.matches.length,
+      matchMinutes: perMatch,
+      playMinutes: alone.matches.length * perMatch,
+      aloneMinutes: (alone.endMinutes ?? startMinutes) - startMinutes,
+      endsAt: Math.max(...inTotal.map((m) => m.end)),
+    });
+  }
+  return { ok: true, courts, courtGap, total, startMinutes, perClass };
+}
+
+/** 107 → "1 h 47 min", 45 → "45 min" */
+function duration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+const plans = (n: number) => `${n} ${n === 1 ? "plan" : "planer"}`;
+
+function ClassEstimate({ estimate, classId }: { estimate: Estimate; classId: string }) {
+  if (!estimate.ok) return null;
+  const e = estimate.perClass.get(classId);
+  if (!e) return null;
+  return (
+    <div className="grid gap-0.5 rounded-md bg-accent/60 px-3 py-2 text-sm">
+      <p>
+        <span className="font-semibold">Beräknad tid: ca {duration(e.aloneMinutes)}</span>{" "}
+        <span className="text-muted-foreground">
+          med {plans(estimate.courts)} och {estimate.courtGap} min mellan matcherna
+        </span>
+      </p>
+      <p className="text-muted-foreground">
+        {e.matches} {e.matches === 1 ? "match" : "matcher"} × {e.matchMinutes} min ={" "}
+        {duration(e.playMinutes)} speltid · klar ca {fromMinutes(e.endsAt)} när alla klasser
+        spelar samtidigt
+      </p>
+    </div>
+  );
+}
+
+function TotalEstimate({
+  estimate,
+  eventEndTime,
+}: {
+  estimate: Estimate;
+  eventEndTime: string | null;
+}) {
+  return (
+    <section className="grid gap-2 rounded-xl border-2 border-ball/60 bg-card p-4 shadow-sm">
+      <h2 className="font-display text-xl font-bold uppercase">Total tidsåtgång</h2>
+      {!estimate.ok ? (
+        <p className="text-sm text-muted-foreground">{estimate.reason} för att se beräkningen.</p>
+      ) : estimate.total.matches.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Inga matcher ännu. Varje klass behöver matchregler och minst två anmälda lag.
+        </p>
+      ) : (
+        (() => {
+          const end = estimate.total.endMinutes!;
+          const play = [...estimate.perClass.values()].reduce((s, c) => s + c.playMinutes, 0);
+          const over = eventEndTime && end > toMinutes(eventEndTime);
+          return (
+            <>
+              <p className="text-lg">
+                <span className="font-semibold">
+                  {fromMinutes(estimate.startMinutes)}–{fromMinutes(end)}
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  ({duration(end - estimate.startMinutes)} för alla klasser)
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {estimate.total.matches.length} matcher · {duration(play)} speltid totalt ·{" "}
+                {plans(estimate.courts)} · {estimate.courtGap} min mellan matcherna
+              </p>
+              {end >= 24 * 60 && (
+                <p className="text-sm font-medium text-destructive">
+                  Schemat skulle gå över midnatt. Lägg till planer eller minska antalet matcher.
+                </p>
+              )}
+              {over && end < 24 * 60 && (
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  Slutar efter sammandragets sluttid {eventEndTime}.
+                </p>
+              )}
+            </>
+          );
+        })()
+      )}
+    </section>
   );
 }

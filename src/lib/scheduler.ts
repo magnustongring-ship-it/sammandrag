@@ -4,8 +4,9 @@
 //    antal matcher per lag. Paren skapas i omgångar (berger-/cirkelmetoden)
 //    så att alla lag kommer igång tidigt.
 // 2. Matcherna läggs ut på planerna en i taget: den match som kan starta
-//    tidigast väljs, med hänsyn till lediga planer och att varje lag ska få
-//    minst den angivna vilotiden mellan sina matcher.
+//    tidigast väljs. Mellan två matcher på samma plan går den angivna tiden
+//    (byte/uppvärmning). Ett lag vilar alltid minst en match mellan sina
+//    matcher: nästa match tidigast efter ytterligare en hel match på planen.
 //
 // Ren logik utan databas, så att den går att testa fristående.
 
@@ -33,7 +34,8 @@ export type ScheduleInput = {
   /** Minuter efter midnatt */
   startMinutes: number;
   courts: number;
-  minRestMinutes: number;
+  /** Minuter mellan två matcher på samma plan */
+  courtGapMinutes: number;
   classes: ScheduleClass[];
 };
 
@@ -187,9 +189,12 @@ export function buildSchedule(input: ScheduleInput): ScheduleResult {
     }
     const m = pending.splice(best!.index, 1)[0];
     const end = best!.start + m.duration;
-    courtFree[best!.court] = end;
-    teamReady.set(m.home.id, end + input.minRestMinutes);
-    teamReady.set(m.away.id, end + input.minRestMinutes);
+    const gap = input.courtGapMinutes;
+    courtFree[best!.court] = end + gap;
+    // Minst en match vila: hoppa över nästa omgång på planen.
+    const rested = end + gap + m.duration + gap;
+    teamReady.set(m.home.id, rested);
+    teamReady.set(m.away.id, rested);
     matches.push({
       classId: m.classId,
       classLabel: m.classLabel,
