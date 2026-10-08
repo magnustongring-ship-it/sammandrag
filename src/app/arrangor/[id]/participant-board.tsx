@@ -127,8 +127,10 @@ export function ParticipantBoard({
             </div>
 
             {zones.map(({ zone, rows, title }) => {
-              // Tomma zoner visas bara under pågående drag eller för anmälda lag.
-              if (rows.length === 0 && !dragId && !(zone.status === "anmald" && inClass.length === 0)) {
+              // Släppytorna finns alltid när lag kan flyttas. De får inte dyka upp
+              // först när dragningen startar: då flyttas lagen i klasserna längre
+              // ner under musen och Chrome avbryter dragningen.
+              if (rows.length === 0 && !canMove && !(zone.status === "anmald" && inClass.length === 0)) {
                 return null;
               }
               const active = overZone === zoneKey(zone);
@@ -139,8 +141,7 @@ export function ParticipantBoard({
                   className={cn(
                     "transition-colors",
                     zone.status === "vantelista" && "border-t",
-                    dragId && "bg-muted/40",
-                    active && "bg-primary/10 outline-2 -outline-offset-2 outline-primary",
+                        active && "bg-primary/10 outline-2 -outline-offset-2 outline-primary",
                   )}
                 >
                   {title && (
@@ -150,10 +151,10 @@ export function ParticipantBoard({
                   )}
                   {rows.length === 0 ? (
                     <p className="px-3 py-4 text-sm text-muted-foreground">
-                      {dragId
+                      {canMove
                         ? zone.status === "anmald"
-                          ? "Släpp här för att anmäla laget i klassen."
-                          : "Släpp här för att lägga laget på väntelistan."
+                          ? `${inClass.length === 0 ? "Inga anmälda lag ännu. " : ""}Dra lag hit för att anmäla dem i klassen.`
+                          : "Dra lag hit för att lägga dem på väntelistan."
                         : "Inga anmälda lag ännu."}
                     </p>
                   ) : (
@@ -233,7 +234,9 @@ function TeamTable({
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move";
                 e.dataTransfer.setData("text/plain", r.id);
-                onDragStart(r.id);
+                // Uppdatera först efter dragstart: ändras sidan direkt avbryter
+                // Chrome dragningen.
+                setTimeout(() => onDragStart(r.id), 0);
               }}
               onDragEnd={onDragEnd}
               className={cn(
