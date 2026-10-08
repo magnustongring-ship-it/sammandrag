@@ -375,3 +375,29 @@ export async function deleteDraft(eventId: string): Promise<ActionResult> {
   revalidatePath("/arrangor");
   redirect("/arrangor");
 }
+
+/**
+ * Tar bort ett sammandrag oavsett status, med klasser, anmälningar, spelschema
+ * och domaranmälningar. Bara SuperAdmin: för alla andra avbokas publicerade
+ * sammandrag i stället. Anmälda föreningar får inget meddelande.
+ */
+export async function deleteEvent(eventId: string): Promise<ActionResult> {
+  const session = await requireOrganizer();
+  if (!isSuperAdmin(session)) {
+    return { error: "Bara SuperAdmin kan radera publicerade sammandrag." };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .select("id");
+  if (error) return { error: dbError(error) };
+  if (!data?.length) return { error: "Sammandraget hittades inte." };
+
+  revalidatePath("/");
+  revalidatePath("/arrangor");
+  revalidatePath("/mina-anmalningar");
+  revalidatePath("/mina-matcher");
+  redirect("/arrangor");
+}

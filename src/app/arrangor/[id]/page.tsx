@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { CalendarClock, Flag } from "lucide-react";
 import { notFound } from "next/navigation";
-import { canManageEvent, requireOrganizer } from "@/lib/auth";
+import { canManageEvent, isSuperAdmin, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { deleteDraft, setEventStatus } from "@/lib/actions/events";
+import { deleteDraft, deleteEvent, setEventStatus } from "@/lib/actions/events";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EventStatusBadge } from "@/components/event-status-badge";
 import { Button } from "@/components/ui/button";
@@ -178,6 +178,17 @@ export default async function EditEventPage({
               label="Radera utkast"
               confirmLabel="Ja, radera"
               question="Utkastet raderas permanent och går inte att få tillbaka."
+              variant="destructive"
+            />
+          )}
+          {event.status !== "utkast" && isSuperAdmin(session) && (
+            <ConfirmButton
+              action={deleteEvent.bind(null, event.id)}
+              label="Radera sammandrag (SuperAdmin)"
+              confirmLabel="Ja, radera för alltid"
+              question={`Sammandraget raderas permanent och går inte att få tillbaka. Det tar också bort ${
+                Object.values(teamCounts).reduce((a, b) => a + b, 0)
+              } anmälda lag, spelschemat och domaranmälningarna. Föreningarna får inget meddelande. Vill du bara ta bort det ur kalendern, avboka det i stället.`}
               variant="destructive"
             />
           )}
