@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, isSuperAdmin, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInStockholm } from "@/lib/calendar";
 import { validateEventForm, type EventFormValues, type ValidClass } from "@/lib/event-form";
@@ -157,7 +157,7 @@ export async function saveEvent(
       )
       .eq("id", eventId)
       .single();
-    if (!event || event.organizer_org_id !== session.organization.id) {
+    if (!event || !canManageEvent(session, event.organizer_org_id)) {
       return { error: "Sammandraget hittades inte." };
     }
     currentStatus = event.status;
@@ -220,6 +220,9 @@ export async function saveEvent(
   };
 
   if (!eventId) {
+    if (!session.organization) {
+      return { error: "Du måste tillhöra en förening för att skapa sammandrag." };
+    }
     const { data: created, error } = await supabase
       .from("events")
       .insert({
@@ -333,7 +336,7 @@ export async function setEventStatus(
     .select("status, organizer_org_id, event_classes(id)")
     .eq("id", eventId)
     .single();
-  if (!event || event.organizer_org_id !== session.organization.id) {
+  if (!event || !canManageEvent(session, event.organizer_org_id)) {
     return { error: "Sammandraget hittades inte." };
   }
   if (status === "publicerad" && event.event_classes.length === 0) {
@@ -357,13 +360,15 @@ export async function setEventStatus(
 export async function deleteDraft(eventId: string): Promise<ActionResult> {
   const session = await requireOrganizer();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const query = supabase
     .from("events")
     .delete()
     .eq("id", eventId)
-    .eq("organizer_org_id", session.organization.id)
-    .eq("status", "utkast")
-    .select("id");
+    .eq("status", "utkast");
+  const { data, error } = await (isSuperAdmin(session)
+    ? query
+    : query.eq("organizer_org_id", session.organization?.id ?? "")
+  ).select("id");
   if (error) return { error: dbError(error) };
   if (!data?.length) return { error: "Bara utkast kan raderas." };
 

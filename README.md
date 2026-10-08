@@ -32,9 +32,21 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 
    och öppna [http://localhost:3000](http://localhost:3000).
 
-6. Registrera ett konto och en förening. Gör dig sedan till sajtadmin genom att
-   sätta `is_site_admin = true` på din rad i tabellen `profiles`, och godkänn
-   din förening under `/admin`.
+6. Registrera ett konto och en förening. Gör dig sedan till SuperAdmin genom att
+   köra `update profiles set role = 'superadmin' where id = '<ditt användar-id>';`
+   i Supabase → SQL Editor, och godkänn din förening under `/admin`.
+   Därefter sätter du nivåer för övriga användare under `/medlemmar`.
+
+## Behörighetsnivåer
+
+| Nivå | Får göra |
+|---|---|
+| `lagadmin` | Grundnivån vid registrering. Anmäler lag och domare för sin förening. |
+| `foreningsadmin` | Skapar och driver sammandrag (spelschema, domare, flytt av lag) och hanterar föreningens medlemmar: godkänner förfrågningar och sätter LagAdmin/FöreningsAdmin. Den som registrerar en ny förening blir FöreningsAdmin. |
+| `superadmin` | Kan allt: alla föreningar, sammandrag, användare, nivåer och föreningstillhörighet. Kan inte ändra sin egen nivå. |
+
+Nya användare ansluter till en godkänd förening via `/registrera/forening`;
+FöreningsAdmin eller SuperAdmin godkänner förfrågan under `/medlemmar`.
 
 ## Migreringar
 
@@ -46,6 +58,8 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 | `20261006000000_schedule.sql` | Spelschema: inställningar och matcher |
 | `20261007000000_easy_basket_rules.sql` | Matchregler per åldersgrupp och klass (Easy Basket) |
 | `20261008000000_referees.sql` | Domare: intresseanmälan och tillsättning på matcher |
+| `20261009000000_move_registration.sql` | Arrangören flyttar lag mellan klasser |
+| `20261010000000_roles.sql` | Behörighetsnivåer, SuperAdmin och anslutning till förening |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.
@@ -62,7 +76,8 @@ när schemat ändras, eller generera dem med `supabase gen types typescript`.
 | `/arrangor/[id]/schema` | Skapa och publicera spelschema |
 | `/arrangor/[id]/domare` | Domarnas intresseanmälningar och tillsättning |
 | `/domare` | Kommande sammandrag där domare kan anmäla intresse |
-| `/admin` | Godkänna föreningar och hantera åldersgrupper |
+| `/admin` | SuperAdmin: godkänna föreningar och hantera åldersgrupper |
+| `/medlemmar` | FöreningsAdmin: medlemmar och förfrågningar. SuperAdmin: alla användare, nivåer och föreningar |
 
 ## Kommandon
 

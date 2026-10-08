@@ -11,6 +11,7 @@ export type Json =
   | Json[];
 
 export type OrganizationStatus = "vantar" | "godkand" | "avslagen";
+export type UserRole = "lagadmin" | "foreningsadmin" | "superadmin";
 export type EventStatus = "utkast" | "publicerad" | "avbokad";
 export type Gender = "pojkar" | "flickor" | "mixed";
 export type RegistrationStatus = "anmald" | "vantelista" | "avanmald";
@@ -51,24 +52,21 @@ export type Database = {
           id: string;
           organization_id: string | null;
           full_name: string | null;
-          is_org_admin: boolean;
-          is_site_admin: boolean;
+          role: UserRole;
           created_at: string;
         };
         Insert: {
           id: string;
           organization_id?: string | null;
           full_name?: string | null;
-          is_org_admin?: boolean;
-          is_site_admin?: boolean;
+          role?: UserRole;
           created_at?: string;
         };
         Update: {
           id?: string;
           organization_id?: string | null;
           full_name?: string | null;
-          is_org_admin?: boolean;
-          is_site_admin?: boolean;
+          role?: UserRole;
           created_at?: string;
         };
         Relationships: [
@@ -450,6 +448,41 @@ export type Database = {
           },
         ];
       };
+      membership_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          status: OrganizationStatus;
+          decided_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          status?: OrganizationStatus;
+          decided_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string;
+          status?: OrganizationStatus;
+          decided_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "membership_requests_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -478,6 +511,47 @@ export type Database = {
           event_class_id: string;
           registered: number;
           waitlisted: number;
+        }[];
+      };
+      request_membership: { Args: { p_org: string }; Returns: string };
+      cancel_membership_request: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      decide_membership: {
+        Args: { p_request: string; p_approve: boolean };
+        Returns: undefined;
+      };
+      set_user_role: {
+        Args: { p_user: string; p_role: string };
+        Returns: undefined;
+      };
+      set_user_org: {
+        Args: { p_user: string; p_org: string | null };
+        Returns: undefined;
+      };
+      list_users: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          role: UserRole;
+          organization_id: string | null;
+          organization_name: string | null;
+          created_at: string;
+        }[];
+      };
+      list_membership_requests: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          user_id: string;
+          email: string;
+          full_name: string | null;
+          organization_id: string;
+          organization_name: string;
+          created_at: string;
         }[];
       };
       is_event_organizer: { Args: { p_event_id: string }; Returns: boolean };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Flag, Plus } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { getSession, isOrgAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   genders,
@@ -39,7 +39,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const session = await getSession();
   const canCreate =
-    session?.organization?.status === "godkand" && session.profile.is_org_admin;
+    session?.organization?.status === "godkand" && isOrgAdmin(session);
   const today = todayInStockholm();
   const view = single(params.vy) === "lista" ? "lista" : "manad";
   const month = parseMonth(single(params.manad)) ?? today.slice(0, 7);

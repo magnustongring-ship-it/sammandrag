@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarClock, Flag } from "lucide-react";
 import { notFound } from "next/navigation";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { deleteDraft, setEventStatus } from "@/lib/actions/events";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -28,9 +28,8 @@ export default async function EditEventPage({
     .from("events")
     .select("*, event_classes(*, age_groups(name, sort_order))")
     .eq("id", id)
-    .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
-  if (!event) notFound();
+  if (!event || !canManageEvent(session, event.organizer_org_id)) notFound();
 
   const [ageGroups, { data: counts }] = await Promise.all([
     getAgeGroupsWithRules(supabase),

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { canManageEvent, getSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cancelRegistration } from "@/lib/actions/registrations";
 import {
@@ -114,8 +114,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
   const today = todayInStockholm();
   const open = isRegistrationOpen(event, today);
   const refereesWelcome = event.status === "publicerad" && today <= event.event_date;
-  const isOrganizer =
-    myOrg?.id === event.organizer_org_id && session?.profile.is_org_admin;
+  const isOrganizer = !!session && canManageEvent(session, event.organizer_org_id);
   const time = formatTimeRange(event.start_time, event.end_time);
   const cancelled = event.status === "avbokad";
 

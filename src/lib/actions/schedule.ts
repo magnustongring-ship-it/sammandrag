@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
 import { genderLabel } from "@/lib/calendar";
@@ -84,7 +84,7 @@ export async function generateSchedule(
     )
     .eq("id", eventId)
     .maybeSingle();
-  if (!event || event.organizer_org_id !== session.organization.id) {
+  if (!event || !canManageEvent(session, event.organizer_org_id)) {
     return { error: "Sammandraget hittades inte." };
   }
 
@@ -250,7 +250,7 @@ async function requireOwnEvent(eventId: string) {
     .select("organizer_org_id")
     .eq("id", eventId)
     .maybeSingle();
-  return { supabase, ok: data?.organizer_org_id === session.organization.id };
+  return { supabase, ok: !!data && canManageEvent(session, data.organizer_org_id) };
 }
 
 /** Publicera eller dölj schemat på sammandragets sida. */

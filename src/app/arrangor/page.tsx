@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { requireOrganizer } from "@/lib/auth";
+import { isSuperAdmin, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatTimeRange, todayInStockholm } from "@/lib/calendar";
 import type { Tables } from "@/lib/database.types";
@@ -20,13 +20,17 @@ type Row = Pick<
 export default async function OrganizerPage() {
   const session = await requireOrganizer();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  // SuperAdmin ser alla föreningars sammandrag.
+  const all = isSuperAdmin(session);
+  const query = supabase
     .from("events")
     .select(
       "id, title, event_date, start_time, end_time, venue_name, city, status, event_classes(id)",
     )
-    .eq("organizer_org_id", session.organization.id)
     .order("event_date");
+  const { data, error } = await (all
+    ? query
+    : query.eq("organizer_org_id", session.organization?.id ?? ""));
 
   const today = todayInStockholm();
   const events: Row[] = data ?? [];
@@ -45,14 +49,20 @@ export default async function OrganizerPage() {
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold uppercase">Mina sammandrag</h1>
-          <p className="text-sm text-muted-foreground">{session.organization.name}</p>
+          <h1 className="text-3xl font-bold uppercase">
+            {all ? "Alla sammandrag" : "Mina sammandrag"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {all ? "Alla föreningar" : session.organization?.name}
+          </p>
         </div>
-        <Button asChild>
-          <Link href="/arrangor/nytt">
-            <Plus /> Nytt sammandrag
-          </Link>
-        </Button>
+        {session.organization && (
+          <Button asChild>
+            <Link href="/arrangor/nytt">
+              <Plus /> Nytt sammandrag
+            </Link>
+          </Button>
+        )}
       </div>
 
       {error && (

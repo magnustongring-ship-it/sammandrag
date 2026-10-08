@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
+import { getSession, isOrgAdmin, isSuperAdmin } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -15,12 +15,13 @@ export async function SiteHeader() {
   const links = session
     ? [
         approved && { href: "/mina-anmalningar", label: "Mina anmälningar" },
-        approved &&
-          session.profile.is_org_admin && {
+        (approved || isSuperAdmin(session)) &&
+          isOrgAdmin(session) && {
             href: "/arrangor",
-            label: "Mina sammandrag",
+            label: isSuperAdmin(session) ? "Alla sammandrag" : "Mina sammandrag",
           },
-        session.profile.is_site_admin && { href: "/admin", label: "Admin" },
+        isOrgAdmin(session) && { href: "/medlemmar", label: "Medlemmar" },
+        isSuperAdmin(session) && { href: "/admin", label: "Admin" },
         { href: "/domare", label: "Bli domare" },
       ].filter((l): l is { href: string; label: string } => Boolean(l))
     : [];

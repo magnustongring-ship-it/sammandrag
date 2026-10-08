@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
 import { sendEmail } from "@/lib/email";
@@ -117,7 +117,7 @@ async function ownEvent(eventId: string) {
     .select("organizer_org_id")
     .eq("id", eventId)
     .maybeSingle();
-  return { supabase, ok: data?.organizer_org_id === session.organization.id };
+  return { supabase, ok: !!data && canManageEvent(session, data.organizer_org_id) };
 }
 
 export async function deleteReferee(

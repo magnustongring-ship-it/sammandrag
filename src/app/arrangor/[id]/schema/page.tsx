@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { genderLabel, TIME_ZONE } from "@/lib/calendar";
 import { getScheduleMatches } from "@/lib/schedule";
@@ -33,12 +33,11 @@ export default async function SchedulePage({
   const { data: event } = await supabase
     .from("events")
     .select(
-      "id, title, status, start_time, end_time, event_classes(*, age_groups(*), registrations(id, status))",
+      "id, title, status, organizer_org_id, start_time, end_time, event_classes(*, age_groups(*), registrations(id, status))",
     )
     .eq("id", id)
-    .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
-  if (!event) notFound();
+  if (!event || !canManageEvent(session, event.organizer_org_id)) notFound();
 
   const [{ data: schedule, error: scheduleError }, { matches }] =
     await Promise.all([

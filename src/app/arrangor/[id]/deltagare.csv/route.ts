@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { getSession } from "@/lib/auth";
+import { canManageEvent, getSession, isOrgAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TIME_ZONE, genderLabel } from "@/lib/calendar";
 import { toCsv } from "@/lib/csv";
@@ -26,7 +26,7 @@ const timestamp = new Intl.DateTimeFormat("sv-SE", {
 export async function GET(_req: NextRequest, ctx: RouteContext<"/arrangor/[id]/deltagare.csv">) {
   const { id } = await ctx.params;
   const session = await getSession();
-  if (!session?.organization || !session.profile.is_org_admin) {
+  if (!session || !isOrgAdmin(session)) {
     return new Response("Ingen behörighet", { status: 403 });
   }
 
@@ -34,12 +34,11 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/arrangor/[id]/d
   const { data: event } = await supabase
     .from("events")
     .select(
-      "title, event_date, event_classes(id, gender, age_groups(name, sort_order), registrations(team_name, contact_email, contact_phone, status, created_at, organizations(name)))",
+      "title, event_date, organizer_org_id, event_classes(id, gender, age_groups(name, sort_order), registrations(team_name, contact_email, contact_phone, status, created_at, organizations(name)))",
     )
     .eq("id", id)
-    .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
-  if (!event) return new Response("Sammandraget hittades inte", { status: 404 });
+  if (!event || !canManageEvent(session, event.organizer_org_id)) return new Response("Sammandraget hittades inte", { status: 404 });
 
   const classes = [...event.event_classes].sort(
     (a, b) =>

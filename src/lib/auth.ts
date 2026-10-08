@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/database.types";
+import { isUserRole } from "@/lib/roles";
 
 export type Session = {
   userId: string;
@@ -39,10 +40,21 @@ export const getSession = cache(async (): Promise<Session | null> => {
   return { userId: user.id, email: user.email ?? null, profile, organization };
 });
 
+export const isSuperAdmin = (session: Session) => session.profile.role === "superadmin";
+
+/** FöreningsAdmin eller SuperAdmin. */
+export const isOrgAdmin = (session: Session) =>
+  isUserRole(session.profile.role) && session.profile.role !== "lagadmin";
+
+/** Får användaren hantera sammandrag som arrangeras av föreningen? */
+export function canManageEvent(session: Session, organizerOrgId: string): boolean {
+  return isSuperAdmin(session) || (isOrgAdmin(session) && session.organization?.id === organizerOrgId);
+}
+
 // Vart en inloggad användare ska skickas utifrån föreningens status.
 export function homePathFor(session: Session): string {
   if (!session.organization) {
-    return session.profile.is_site_admin ? "/admin" : "/registrera/forening";
+    return isSuperAdmin(session) ? "/admin" : "/registrera/forening";
   }
   if (session.organization.status !== "godkand") {
     return "/vantar-pa-godkannande";
@@ -67,17 +79,35 @@ export async function requireApprovedOrg(): Promise<
   return session as Session & { organization: Tables<"organizations"> };
 }
 
-// För arrangörssidor: godkänd förening och föreningsadmin.
-export async function requireOrganizer(): Promise<
+// För arrangörssidor: FöreningsAdmin i en godkänd förening, eller SuperAdmin
+// (som inte behöver tillhöra någon förening). Kontrollera äganderätt till ett
+// sammandrag med canManageEvent.
+export async function requireOrganizer(): Promise<Session> {
+  const session = await requireUser();
+  if (isSuperAdmin(session)) return session;
+  if (session.organization?.status !== "godkand") redirect(homePathFor(session));
+  if (!isOrgAdmin(session)) redirect("/");
+  return session;
+}
+
+// För sidor som skapar något åt en förening: kräver en förening att skapa för.
+export async function requireOrganizerWithOrg(): Promise<
   Session & { organization: Tables<"organizations"> }
 > {
-  const session = await requireApprovedOrg();
-  if (!session.profile.is_org_admin) redirect("/");
+  const session = await requireOrganizer();
+  if (!session.organization) redirect("/admin");
+  return session as Session & { organization: Tables<"organizations"> };
+}
+
+// För sidor om föreningens medlemmar: FöreningsAdmin eller SuperAdmin.
+export async function requireOrgAdmin(): Promise<Session> {
+  const session = await requireUser();
+  if (!isOrgAdmin(session)) redirect("/");
   return session;
 }
 
 export async function requireSiteAdmin(): Promise<Session> {
   const session = await requireUser();
-  if (!session.profile.is_site_admin) redirect("/");
+  if (!isSuperAdmin(session)) redirect("/");
   return session;
 }

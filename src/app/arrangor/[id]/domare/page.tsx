@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireOrganizer } from "@/lib/auth";
+import { canManageEvent, requireOrganizer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TIME_ZONE } from "@/lib/calendar";
 import { getScheduleMatches } from "@/lib/schedule";
@@ -26,11 +26,10 @@ export default async function RefereesPage({ params }: PageProps<"/arrangor/[id]
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, status")
+    .select("id, title, status, organizer_org_id")
     .eq("id", id)
-    .eq("organizer_org_id", session.organization.id)
     .maybeSingle();
-  if (!event) notFound();
+  if (!event || !canManageEvent(session, event.organizer_org_id)) notFound();
 
   const [{ data: refData, error: refError }, { matches }] = await Promise.all([
     supabase.from("referee_applications").select("*").eq("event_id", id),
