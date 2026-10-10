@@ -30,8 +30,11 @@ export default async function BecomeRefereePage() {
           <p className="max-w-2xl text-brand-foreground/80">
             Vill du döma på ett sammandrag? Välj ett sammandrag nedan och anmäl ditt intresse.
             Du behöver inget konto för att anmäla dig. Arrangören ser din anmälan och du får ett
-            mejl om du blir tillsatt på matcher. Skapa ett konto med samma e-postadress så ser du
-            alla dina matcher under Mina matcher.
+            mejl om du blir tillsatt på matcher.{" "}
+            <Link href="/registrera/domare" className="font-medium text-brand-foreground underline">
+              Skapa ett domarkonto
+            </Link>{" "}
+            med samma e-postadress så ser du alla dina matcher under Mina matcher.
           </p>
           <p className="text-sm text-brand-foreground/70">
             Nivåer: {REFEREE_LEVELS.map((l) => l.label).join(", ")}.

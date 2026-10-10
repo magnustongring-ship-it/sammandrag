@@ -23,8 +23,8 @@ export async function SiteHeader() {
           },
         isOrgAdmin(session) && { href: "/medlemmar", label: "Medlemmar" },
         isSuperAdmin(session) && { href: "/admin", label: "Admin" },
-        { href: "/mina-matcher", label: "Mina matcher" },
-        { href: "/domare", label: "Bli domare" },
+        session.isReferee && { href: "/mina-matcher", label: "Mina matcher" },
+        session.isReferee && { href: "/domare", label: "Bli domare" },
       ].filter((l): l is { href: string; label: string } => Boolean(l))
     : [];
 

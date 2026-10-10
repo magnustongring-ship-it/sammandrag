@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession, homePathFor } from "@/lib/auth";
-import { signUpReferee } from "@/lib/actions/auth";
+import { getSession } from "@/lib/auth";
+import { becomeReferee, signUpReferee } from "@/lib/actions/auth";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,7 +17,7 @@ export const metadata = { title: "Registrera dig som domare" };
 
 export default async function RefereeSignupPage() {
   const session = await getSession();
-  if (session) redirect(homePathFor(session));
+  if (session?.isReferee) redirect("/mina-matcher");
 
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12">
@@ -26,19 +27,33 @@ export default async function RefereeSignupPage() {
             Domarkonto
           </CardTitle>
           <CardDescription>
-            Använd samma e-postadress som när du anmäler intresse att döma, så
-            kopplas dina matcher till kontot.
+            {session
+              ? `Du är inloggad som ${session.email}. Lägg till domarsidorna på ditt konto, så ser du matcherna du är tillsatt att döma. Anmäl intresse att döma med samma e-postadress.`
+              : "Använd samma e-postadress som när du anmäler intresse att döma, så kopplas dina matcher till kontot."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SignupForm action={signUpReferee} submitLabel="Skapa domarkonto" />
+          {session ? (
+            <form action={becomeReferee}>
+              <Button type="submit" className="w-full">
+                Lägg till domarsidorna
+              </Button>
+            </form>
+          ) : (
+            <SignupForm action={signUpReferee} submitLabel="Skapa domarkonto" />
+          )}
         </CardContent>
-        <CardFooter className="text-sm text-muted-foreground">
-          Har du redan ett konto?&nbsp;
-          <Link href="/logga-in" className="font-medium text-foreground underline">
-            Logga in
-          </Link>
-        </CardFooter>
+        {!session && (
+          <CardFooter className="text-sm text-muted-foreground">
+            Har du redan ett konto?&nbsp;
+            <Link
+              href="/logga-in?next=/registrera/domare"
+              className="font-medium text-foreground underline"
+            >
+              Logga in
+            </Link>
+          </CardFooter>
+        )}
       </Card>
     </main>
   );

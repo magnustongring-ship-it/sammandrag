@@ -53,6 +53,7 @@ export type Database = {
           organization_id: string | null;
           full_name: string | null;
           role: UserRole;
+          is_referee: boolean;
           created_at: string;
         };
         Insert: {
@@ -60,6 +61,7 @@ export type Database = {
           organization_id?: string | null;
           full_name?: string | null;
           role?: UserRole;
+          is_referee?: boolean;
           created_at?: string;
         };
         Update: {
@@ -67,6 +69,7 @@ export type Database = {
           organization_id?: string | null;
           full_name?: string | null;
           role?: UserRole;
+          is_referee?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -685,6 +688,14 @@ export type Database = {
           referee_slot: number;
           partner_name: string | null;
         }[];
+      };
+      am_i_referee: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      become_referee: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
       };
       my_referee_applications: {
         Args: Record<PropertyKey, never>;

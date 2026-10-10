@@ -9,6 +9,8 @@ export type Session = {
   email: string | null;
   profile: Tables<"profiles">;
   organization: Tables<"organizations"> | null;
+  /** Domare (registrerad som domare eller anmäld att döma): ser domarsidorna. */
+  isReferee: boolean;
 };
 
 // Hämtar inloggad användare med profil och förening. Cachas per request.
@@ -26,17 +28,20 @@ export const getSession = cache(async (): Promise<Session | null> => {
     .single();
   if (!profile) return null;
 
-  let organization: Tables<"organizations"> | null = null;
-  if (profile.organization_id) {
-    const { data } = await supabase
-      .from("organizations")
-      .select("*")
-      .eq("id", profile.organization_id)
-      .single();
-    organization = data;
-  }
+  const [org, referee] = await Promise.all([
+    profile.organization_id
+      ? supabase.from("organizations").select("*").eq("id", profile.organization_id).single()
+      : null,
+    supabase.rpc("am_i_referee"),
+  ]);
 
-  return { userId: user.id, email: user.email ?? null, profile, organization };
+  return {
+    userId: user.id,
+    email: user.email ?? null,
+    profile,
+    organization: org?.data ?? null,
+    isReferee: Boolean(referee.data) || profile.is_referee || profile.role === "domare",
+  };
 });
 
 export const isSuperAdmin = (session: Session) => session.profile.role === "superadmin";

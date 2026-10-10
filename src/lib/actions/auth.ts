@@ -277,3 +277,16 @@ export async function createOrganization(
   revalidatePath("/", "layout");
   redirect("/vantar-pa-godkannande");
 }
+
+/** Lägger till domarsidorna på kontot, t.ex. för en FöreningsAdmin som också dömer. */
+export async function becomeReferee(): Promise<void> {
+  const session = await getSession();
+  if (!session) redirect("/logga-in?next=/registrera/domare");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("become_referee");
+  if (error) throw new Error(friendlyError(error, "Kunde inte lägga till domarsidorna"));
+
+  revalidatePath("/", "layout");
+  redirect("/mina-matcher");
+}

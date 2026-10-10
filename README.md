@@ -65,6 +65,7 @@ Utan e-post (Resend) kan FöreningsAdmin kopiera länken under `/lag`.
 | `20261010000000_roles.sql` | Behörighetsnivåer, SuperAdmin och anslutning till förening |
 | `20261011000000_referee_accounts.sql` | Domare med konto ser sina uppdrag |
 | `20261012000000_teams_invitations.sql` | Lag, inbjudan av LagAdmin, nivån domare och anmälan per lag |
+| `20261013000000_referee_flag.sql` | Domarsidorna visas bara för domare; en FöreningsAdmin kan också bli domare |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.
