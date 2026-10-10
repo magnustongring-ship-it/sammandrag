@@ -21,7 +21,9 @@ export async function SiteHeader() {
             href: "/arrangor",
             label: isSuperAdmin(session) ? "Alla sammandrag" : "Mina sammandrag",
           },
-        isOrgAdmin(session) && { href: "/medlemmar", label: "Medlemmar" },
+        // SuperAdmin hittar Medlemmar under Admin.
+        isOrgAdmin(session) &&
+          !isSuperAdmin(session) && { href: "/medlemmar", label: "Medlemmar" },
         isSuperAdmin(session) && { href: "/admin", label: "Admin" },
         session.isReferee && { href: "/mina-matcher", label: "Mina matcher" },
         session.isReferee && { href: "/domare", label: "Bli domare" },

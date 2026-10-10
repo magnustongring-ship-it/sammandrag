@@ -11,6 +11,7 @@ type Result = { error?: string };
 function refresh() {
   revalidatePath("/", "layout");
   revalidatePath("/medlemmar");
+  revalidatePath("/admin/medlemmar");
   revalidatePath("/registrera/forening");
 }
 

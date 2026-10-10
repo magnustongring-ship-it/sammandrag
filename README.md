@@ -86,7 +86,8 @@ när schemat ändras, eller generera dem med `supabase gen types typescript`.
 | `/arrangor/[id]/domare` | Domarnas intresseanmälningar och tillsättning |
 | `/domare` | Kommande sammandrag där domare kan anmäla intresse |
 | `/admin` | SuperAdmin: godkänna föreningar och hantera åldersgrupper |
-| `/medlemmar` | FöreningsAdmin: medlemmar och förfrågningar. SuperAdmin: alla användare, nivåer och föreningar |
+| `/medlemmar` | FöreningsAdmin: föreningens medlemmar och förfrågningar |
+| `/admin/medlemmar` | SuperAdmin: alla användare, nivåer och föreningar |
 
 ## Kommandon
 

@@ -32,11 +32,9 @@ export default async function AdminPage() {
 
   if (error) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <p role="alert" className="text-destructive">
-          {friendlyError(error, "Kunde inte hämta föreningar")}
-        </p>
-      </main>
+      <p role="alert" className="text-destructive">
+        {friendlyError(error, "Kunde inte hämta föreningar")}
+      </p>
     );
   }
 
@@ -44,8 +42,7 @@ export default async function AdminPage() {
   const others = organizations.filter((o) => o.status !== "vantar");
 
   return (
-    <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
-      <h1 className="text-3xl font-bold uppercase">Admin</h1>
+    <>
 
       <Card>
         <CardHeader>
@@ -91,7 +88,7 @@ export default async function AdminPage() {
           <AgeGroups groups={ageGroups ?? []} />
         </CardContent>
       </Card>
-    </main>
+    </>
   );
 }
 
