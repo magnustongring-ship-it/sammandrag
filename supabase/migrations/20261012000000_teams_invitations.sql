@@ -1,5 +1,6 @@
 -- Lag, inbjudningar av LagAdmin och separat registrering för domare och föreningar.
 -- Kör i Supabase → SQL Editor, efter 20261011000000_referee_accounts.sql.
+-- Kan köras flera gånger.
 --
 -- * domare         Ny nivå för den som registrerar sig som domare. Har ingen
 --                  förening och ser bara sina matcher.
@@ -113,27 +114,33 @@ alter table team_admins enable row level security;
 alter table team_invitations enable row level security;
 
 -- Föreningens medlemmar ser lagen, FöreningsAdmin i en godkänd förening hanterar dem.
+drop policy if exists "teams_read" on teams;
 create policy "teams_read" on teams for select using (
   organization_id = my_org() or is_site_admin()
 );
+drop policy if exists "teams_insert" on teams;
 create policy "teams_insert" on teams for insert with check (
   (organization_id = my_org() and is_my_org_admin() and is_my_org_approved())
   or is_site_admin()
 );
+drop policy if exists "teams_update" on teams;
 create policy "teams_update" on teams for update using (
   (organization_id = my_org() and is_my_org_admin()) or is_site_admin()
 );
+drop policy if exists "teams_delete" on teams;
 create policy "teams_delete" on teams for delete using (
   (organization_id = my_org() and is_my_org_admin()) or is_site_admin()
 );
 
 -- Ledarna läggs till via accept_team_invitation, och tas bort av FöreningsAdmin.
 revoke insert, update on team_admins from anon, authenticated;
+drop policy if exists "team_admins_read" on team_admins;
 create policy "team_admins_read" on team_admins for select using (
   user_id = auth.uid()
   or is_site_admin()
   or exists (select 1 from teams t where t.id = team_id and t.organization_id = my_org())
 );
+drop policy if exists "team_admins_delete" on team_admins;
 create policy "team_admins_delete" on team_admins for delete using (
   is_team_org_admin(team_id)
 );
@@ -141,13 +148,16 @@ create policy "team_admins_delete" on team_admins for delete using (
 -- Inbjudningar hanteras bara av FöreningsAdmin. Den inbjudna läser sin
 -- inbjudan via team_invitation_info (med token).
 revoke update on team_invitations from anon, authenticated;
+drop policy if exists "team_invitations_read" on team_invitations;
 create policy "team_invitations_read" on team_invitations for select using (
   is_team_org_admin(team_id)
 );
+drop policy if exists "team_invitations_insert" on team_invitations;
 create policy "team_invitations_insert" on team_invitations for insert with check (
   is_team_org_admin(team_id) and invited_by = auth.uid()
   and (is_site_admin() or is_my_org_approved())
 );
+drop policy if exists "team_invitations_delete" on team_invitations;
 create policy "team_invitations_delete" on team_invitations for delete using (
   is_team_org_admin(team_id) and accepted_at is null
 );
