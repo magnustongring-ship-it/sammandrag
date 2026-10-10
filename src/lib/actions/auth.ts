@@ -36,8 +36,10 @@ function authErrorMessage(code: string | undefined, fallback: string): string {
     case "over_email_send_rate_limit":
     case "over_request_rate_limit":
       return "För många försök. Vänta en stund och försök igen.";
+    // Supabase avvisar adresser som inte kan ta emot mejl, t.ex. när
+    // domänen (delen efter @) inte finns.
     case "email_address_invalid":
-      return "Ogiltig e-postadress.";
+      return "E-postadressen kan inte ta emot mejl. Kontrollera att delen efter @ är rätt stavad och att adressen finns.";
     default:
       console.error("[auth]", code, fallback);
       return "Något gick fel. Försök igen om en stund.";
