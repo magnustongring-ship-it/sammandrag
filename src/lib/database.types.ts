@@ -11,7 +11,7 @@ export type Json =
   | Json[];
 
 export type OrganizationStatus = "vantar" | "godkand" | "avslagen";
-export type UserRole = "lagadmin" | "foreningsadmin" | "superadmin";
+export type UserRole = "domare" | "lagadmin" | "foreningsadmin" | "superadmin";
 export type EventStatus = "utkast" | "publicerad" | "avbokad";
 export type Gender = "pojkar" | "flickor" | "mixed";
 export type RegistrationStatus = "anmald" | "vantelista" | "avanmald";
@@ -236,6 +236,7 @@ export type Database = {
           contact_phone: string;
           status: RegistrationStatus;
           created_at: string;
+          team_id: string | null;
         };
         Insert: {
           id?: string;
@@ -247,6 +248,7 @@ export type Database = {
           contact_phone: string;
           status?: RegistrationStatus;
           created_at?: string;
+          team_id?: string | null;
         };
         Update: {
           id?: string;
@@ -258,6 +260,7 @@ export type Database = {
           contact_phone?: string;
           status?: RegistrationStatus;
           created_at?: string;
+          team_id?: string | null;
         };
         Relationships: [
           {
@@ -272,6 +275,13 @@ export type Database = {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "registrations_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
             referencedColumns: ["id"];
           },
         ];
@@ -483,6 +493,105 @@ export type Database = {
           },
         ];
       };
+      teams: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "teams_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      team_admins: {
+        Row: {
+          team_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          team_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          team_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "team_admins_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      team_invitations: {
+        Row: {
+          id: string;
+          team_id: string;
+          email: string;
+          token: string;
+          invited_by: string;
+          created_at: string;
+          expires_at: string;
+          accepted_at: string | null;
+          accepted_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          team_id: string;
+          email: string;
+          token?: string;
+          invited_by: string;
+          created_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          team_id?: string;
+          email?: string;
+          token?: string;
+          invited_by?: string;
+          created_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -591,6 +700,28 @@ export type Database = {
           assigned_matches: number;
         }[];
       };
+      team_invitation_info: {
+        Args: { p_token: string };
+        Returns: {
+          team_name: string;
+          organization_id: string;
+          organization_name: string;
+          email: string;
+          expired: boolean;
+          accepted: boolean;
+        }[];
+      };
+      accept_team_invitation: { Args: { p_token: string }; Returns: string };
+      list_team_admins: {
+        Args: { p_org: string };
+        Returns: {
+          team_id: string;
+          user_id: string;
+          full_name: string | null;
+          email: string;
+        }[];
+      };
+      is_team_admin: { Args: { p_team: string }; Returns: boolean };
       is_event_organizer: { Args: { p_event_id: string }; Returns: boolean };
       my_org: { Args: Record<PropertyKey, never>; Returns: string };
       is_my_org_admin: { Args: Record<PropertyKey, never>; Returns: boolean };

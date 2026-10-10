@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { isSuperAdmin, requireOrgAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
@@ -52,14 +53,13 @@ export default async function MembersPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Vill ansluta ({requests.data?.length ?? 0})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!requests.data?.length ? (
-            <p className="text-sm text-muted-foreground">Inga väntande förfrågningar.</p>
-          ) : (
+      {/* Förfrågningar från den tidigare anslutningen. Nya LagAdmin bjuds in under Lag. */}
+      {!!requests.data?.length && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Vill ansluta ({requests.data.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
             <ul className="divide-y">
               {requests.data.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -76,9 +76,19 @@ export default async function MembersPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {!superAdmin && (
+        <p className="text-sm text-muted-foreground">
+          Nya lagledare bjuder du in under{" "}
+          <Link href="/lag" className="font-medium text-foreground underline">
+            Lag
+          </Link>
+          . De blir LagAdmin för sitt lag.
+        </p>
+      )}
 
       <Card>
         <CardHeader>

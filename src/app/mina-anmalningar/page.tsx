@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApprovedOrg } from "@/lib/auth";
+import { isOrgAdmin, requireApprovedOrg } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cancelRegistration } from "@/lib/actions/registrations";
 import { formatDate, genderLabel, todayInStockholm } from "@/lib/calendar";
@@ -14,20 +14,28 @@ export const metadata = { title: "Mina anmälningar" };
 export default async function MyRegistrationsPage() {
   const session = await requireApprovedOrg();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("registrations")
-    .select(
-      "id, team_name, status, contact_email, contact_phone, event_classes(gender, age_groups(name), events(id, title, event_date, status, registration_deadline, venue_name, city))",
-    )
-    .eq("organization_id", session.organization.id)
-    .neq("status", "avanmald")
-    .order("created_at");
+  const [{ data, error }, { data: myTeams }] = await Promise.all([
+    supabase
+      .from("registrations")
+      .select(
+        "id, team_name, team_id, registered_by, status, contact_email, contact_phone, event_classes(gender, age_groups(name), events(id, title, event_date, status, registration_deadline, venue_name, city))",
+      )
+      .eq("organization_id", session.organization.id)
+      .neq("status", "avanmald")
+      .order("created_at"),
+    supabase.from("team_admins").select("team_id").eq("user_id", session.userId),
+  ]);
+  // LagAdmin avanmäler sina egna lag, FöreningsAdmin alla föreningens.
+  const myTeamIds = new Set((myTeams ?? []).map((t) => t.team_id));
+  const orgAdmin = isOrgAdmin(session);
 
   const today = todayInStockholm();
   const rows = (data ?? [])
     .flatMap((r) => {
       const event = r.event_classes?.events;
-      return event && r.event_classes ? [{ ...r, cls: r.event_classes, event }] : [];
+      const canCancel =
+        orgAdmin || r.registered_by === session.userId || (!!r.team_id && myTeamIds.has(r.team_id));
+      return event && r.event_classes ? [{ ...r, cls: r.event_classes, event, canCancel }] : [];
     })
     .sort((a, b) => a.event.event_date.localeCompare(b.event.event_date));
   const upcoming = rows.filter((r) => r.event.event_date >= today);
@@ -75,6 +83,7 @@ type Row = {
   id: string;
   team_name: string;
   status: "anmald" | "vantelista" | "avanmald";
+  canCancel: boolean;
   cls: { gender: "pojkar" | "flickor" | "mixed"; age_groups: { name: string } | null };
   event: {
     id: string;
@@ -108,7 +117,7 @@ function List({ rows, today }: { rows: Row[]; today: string }) {
               {r.cls.age_groups?.name} {genderLabel[r.cls.gender].toLowerCase()}
             </p>
           </div>
-          {isRegistrationOpen(r.event, today) && (
+          {r.canCancel && isRegistrationOpen(r.event, today) && (
             <ConfirmButton
               action={cancelRegistration.bind(null, r.id)}
               label="Avanmäl"

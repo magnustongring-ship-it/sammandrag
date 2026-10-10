@@ -15,6 +15,7 @@ export async function SiteHeader() {
   const links = session
     ? [
         approved && { href: "/mina-anmalningar", label: "Mina anmälningar" },
+        approved && { href: "/lag", label: isOrgAdmin(session) ? "Lag" : "Mina lag" },
         (approved || isSuperAdmin(session)) &&
           isOrgAdmin(session) && {
             href: "/arrangor",
@@ -52,10 +53,7 @@ export async function SiteHeader() {
               <Link href="/logga-in">Logga in</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/registrera">
-                Registrera
-                <span className="hidden sm:inline">&nbsp;förening</span>
-              </Link>
+              <Link href="/registrera">Registrera</Link>
             </Button>
           </nav>
         ) : (

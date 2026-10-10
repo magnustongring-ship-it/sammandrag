@@ -32,21 +32,24 @@ Byggd med Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui och Supabase
 
    och öppna [http://localhost:3000](http://localhost:3000).
 
-6. Registrera ett konto och en förening. Gör dig sedan till SuperAdmin genom att
+6. Registrera en förening under `/registrera/forening`. Gör dig sedan till SuperAdmin genom att
    köra `update profiles set role = 'superadmin' where id = '<ditt användar-id>';`
    i Supabase → SQL Editor, och godkänn din förening under `/admin`.
-   Därefter sätter du nivåer för övriga användare under `/medlemmar`.
+   Därefter skapar du föreningens lag och bjuder in lagledare under `/lag`.
 
 ## Behörighetsnivåer
 
 | Nivå | Får göra |
 |---|---|
-| `lagadmin` | Grundnivån vid registrering. Anmäler lag och domare för sin förening. |
-| `foreningsadmin` | Skapar och driver sammandrag (spelschema, domare, flytt av lag) och hanterar föreningens medlemmar: godkänner förfrågningar och sätter LagAdmin/FöreningsAdmin. Den som registrerar en ny förening blir FöreningsAdmin. |
+| `domare` | Registrerar sig via `/registrera/domare`. Tillhör ingen förening och ser sina tillsatta matcher. |
+| `lagadmin` | Lagledare som tackat ja till en inbjudan. Anmäler och avanmäler sina egna lag. |
+| `foreningsadmin` | Den som registrerar en förening. Skapar föreningens lag, bjuder in LagAdmin via e-post, anmäler alla föreningens lag och arrangerar sammandrag. Sätter LagAdmin/FöreningsAdmin under `/medlemmar`. |
 | `superadmin` | Kan allt: alla föreningar, sammandrag, användare, nivåer och föreningstillhörighet. Kan inte ändra sin egen nivå. |
 
-Nya användare ansluter till en godkänd förening via `/registrera/forening`;
-FöreningsAdmin eller SuperAdmin godkänner förfrågan under `/medlemmar`.
+Registreringen har två formulär: `/registrera/forening` (konto och förening på en
+gång, föreningen väntar på godkännande) och `/registrera/domare`. Lagledare
+registrerar sig via länken i inbjudan (`/inbjudan/[token]`), som gäller i 14 dagar.
+Utan e-post (Resend) kan FöreningsAdmin kopiera länken under `/lag`.
 
 ## Migreringar
 
@@ -60,6 +63,8 @@ FöreningsAdmin eller SuperAdmin godkänner förfrågan under `/medlemmar`.
 | `20261008000000_referees.sql` | Domare: intresseanmälan och tillsättning på matcher |
 | `20261009000000_move_registration.sql` | Arrangören flyttar lag mellan klasser |
 | `20261010000000_roles.sql` | Behörighetsnivåer, SuperAdmin och anslutning till förening |
+| `20261011000000_referee_accounts.sql` | Domare med konto ser sina uppdrag |
+| `20261012000000_teams_invitations.sql` | Lag, inbjudan av LagAdmin, nivån domare och anmälan per lag |
 
 Databastyperna i `src/lib/database.types.ts` är skrivna för hand. Uppdatera dem
 när schemat ändras, eller generera dem med `supabase gen types typescript`.
@@ -70,7 +75,10 @@ när schemat ändras, eller generera dem med `supabase gen types typescript`.
 |---|---|
 | `/` | Kalender (månad och lista) med filter |
 | `/sammandrag/[id]` | Detaljer, lediga platser, anmälan |
-| `/logga-in`, `/registrera` | Inloggning och registrering av förening |
+| `/logga-in`, `/registrera` | Inloggning och val av registrering (förening eller domare) |
+| `/registrera/forening`, `/registrera/domare` | Registrering av förening respektive domare |
+| `/inbjudan/[token]` | Lagledare tackar ja till en inbjudan och blir LagAdmin |
+| `/lag` | FöreningsAdmin: lag, ledare och inbjudningar. LagAdmin: sina lag |
 | `/mina-anmalningar` | Föreningens anmälda lag |
 | `/arrangor`, `/arrangor/[id]` | Föreningens sammandrag, redigering och deltagarlista |
 | `/arrangor/[id]/schema` | Skapa och publicera spelschema |

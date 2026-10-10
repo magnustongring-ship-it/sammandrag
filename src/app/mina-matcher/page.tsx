@@ -63,9 +63,10 @@ export default async function MyMatchesPage() {
 
       {!session.organization && (
         <p className="rounded-md border bg-card px-3 py-2 text-sm">
-          Tillhör du en förening och vill anmäla lag?{" "}
+          Är du lagledare? Be din förenings FöreningsAdmin om en inbjudan. Vill du
+          registrera en ny förening?{" "}
           <Link href="/registrera/forening" className="font-medium underline">
-            Anslut till din förening
+            Registrera förening
           </Link>
           .
         </p>

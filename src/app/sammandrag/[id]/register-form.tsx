@@ -20,13 +20,18 @@ export type RegisterClassOption = {
   free: number | null;
 };
 
+export type RegisterTeamOption = { id: string; name: string };
+
 export function RegisterForm({
   eventId,
   classes,
+  teams,
   defaults,
 }: {
   eventId: string;
   classes: RegisterClassOption[];
+  /** Lagen som användaren får anmäla */
+  teams: RegisterTeamOption[];
   defaults: RegisterValues;
 }) {
   const [state, action, pending] = useActionState(registerTeam, undefined);
@@ -43,6 +48,12 @@ export function RegisterForm({
       setValues((v) => ({ ...v, [field]: e.target.value }));
 
   const selected = classes.find((c) => c.id === values.classId);
+  const allChosen = teams.every((t) => values.teamIds.includes(t.id));
+  const toggleTeam = (id: string) =>
+    setValues((v) => ({
+      ...v,
+      teamIds: v.teamIds.includes(id) ? v.teamIds.filter((t) => t !== id) : [...v.teamIds, id],
+    }));
 
   return (
     <form action={action} className="grid gap-4">
@@ -74,30 +85,52 @@ export function RegisterForm({
           </p>
         )}
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="team_name">Lagnamn</Label>
-        <Input
-          id="team_name"
-          name="team_name"
-          value={values.teamName}
-          onChange={set("teamName")}
-          maxLength={100}
-          placeholder="t.ex. Borlänge Basket"
-          required
-        />
-        {selected && values.teamName.trim() ? (
-          <p className="text-xs text-muted-foreground">
-            Sparas som:{" "}
-            <span className="font-semibold text-foreground">
-              {teamNameWithClass(values.teamName, selected.suffix)}
-            </span>
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Klassens förkortning läggs till efter namnet, t.ex. PU8 för pojkar U8.
-          </p>
-        )}
-      </div>
+      <fieldset className="grid gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <legend className="text-sm font-medium">{teams.length === 1 ? "Lag" : "Lag att anmäla"}</legend>
+          {teams.length > 1 && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              onClick={() =>
+                setValues((v) => ({ ...v, teamIds: allChosen ? [] : teams.map((t) => t.id) }))
+              }
+            >
+              {allChosen ? "Avmarkera alla" : "Markera alla"}
+            </Button>
+          )}
+        </div>
+        <ul className="grid gap-1 rounded-md border p-2">
+          {teams.map((t) => (
+            <li key={t.id}>
+              <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
+                <input
+                  type="checkbox"
+                  name="team_id"
+                  value={t.id}
+                  checked={values.teamIds.includes(t.id)}
+                  onChange={() => toggleTeam(t.id)}
+                  className="size-4 accent-primary"
+                />
+                <span>
+                  {t.name}
+                  {selected && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      → {teamNameWithClass(t.name, selected.suffix)}
+                    </span>
+                  )}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Klassens förkortning läggs till efter lagnamnet, t.ex. PU8 för pojkar U8.
+        </p>
+      </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="contact_email">Kontaktpersonens e-post</Label>
@@ -128,7 +161,11 @@ export function RegisterForm({
       <FormMessage state={state} />
       <div>
         <Button type="submit" disabled={pending}>
-          {pending ? "Anmäler…" : "Anmäl lag"}
+          {pending
+            ? "Anmäler…"
+            : values.teamIds.length > 1
+              ? `Anmäl ${values.teamIds.length} lag`
+              : "Anmäl lag"}
         </Button>
       </div>
     </form>

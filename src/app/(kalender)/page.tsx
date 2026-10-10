@@ -122,7 +122,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
             ) : (
               !session && (
                 <Button asChild size="lg">
-                  <Link href="/registrera">Registrera din förening</Link>
+                  <Link href="/registrera/forening">Registrera din förening</Link>
                 </Button>
               )
             )}

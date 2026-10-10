@@ -1,135 +1,76 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { homePathFor, requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import { cancelMembershipRequest, requestMembership } from "@/lib/actions/members";
-import { Button } from "@/components/ui/button";
+import { getSession, homePathFor } from "@/lib/auth";
+import { signUpOrganization } from "@/lib/actions/auth";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SignupForm } from "../signup-form";
 import { OrganizationForm } from "./organization-form";
 
-export const metadata = { title: "Din förening" };
+export const metadata = { title: "Registrera förening" };
 
-const errors: Record<string, string> = {
-  valj: "Välj vilken förening du vill ansluta till.",
-  skicka: "Kunde inte skicka förfrågan. Du kan redan ha en väntande förfrågan, eller så är föreningen inte godkänd.",
-};
-
-export default async function OrganizationPage({
-  searchParams,
-}: PageProps<"/registrera/forening">) {
-  const session = await requireUser();
-  if (session.organization) redirect(homePathFor(session));
-  const { fel } = await searchParams;
-
-  const supabase = await createClient();
-  const [{ data: orgs }, { data: pending }] = await Promise.all([
-    supabase.from("organizations").select("id, name, city").eq("status", "godkand").order("name"),
-    supabase
-      .from("membership_requests")
-      .select("id, organizations(name)")
-      .eq("user_id", session.userId)
-      .eq("status", "vantar")
-      .maybeSingle(),
-  ]);
-
-  const error = typeof fel === "string" ? errors[fel] : undefined;
+// Utloggad: konto och förening i samma formulär. Inloggad utan förening
+// (t.ex. en domare): bara föreningens uppgifter.
+export default async function OrganizationSignupPage() {
+  const session = await getSession();
+  if (session?.organization) redirect(homePathFor(session));
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 px-4 py-12">
+    <main className="flex flex-1 items-start justify-center px-4 py-12">
       <Card className="w-full max-w-md border-t-4 border-t-primary shadow-md">
         <CardHeader>
           <CardTitle className="font-display text-2xl font-bold uppercase">
-            Anslut till din förening
+            Registrera förening
           </CardTitle>
           <CardDescription>
-            Steg 2 av 2. Du är LagAdmin och kan anmäla lag och domare för din förening
-            så fort en FöreningsAdmin har godkänt dig.
+            Du blir föreningens FöreningsAdmin. Nya föreningar granskas innan de kan
+            skapa sammandrag och anmäla lag. Därefter lägger du upp föreningens lag och
+            bjuder in lagledarna.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          {error && (
-            <p
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </p>
-          )}
-          {pending ? (
-            <>
-              <p className="text-sm">
-                Din förfrågan till <strong>{pending.organizations?.name}</strong> väntar på
-                svar från föreningens FöreningsAdmin. Ladda om sidan senare.
-              </p>
-              <form action={cancelMembershipRequest}>
-                <Button type="submit" variant="outline">
-                  Dra tillbaka förfrågan
-                </Button>
-              </form>
-            </>
-          ) : orgs?.length ? (
-            <form action={requestMembership} className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="organization_id">Förening</Label>
-                <select
-                  id="organization_id"
-                  name="organization_id"
-                  required
-                  defaultValue=""
-                  className="h-9 rounded-md border bg-background px-2 text-sm"
-                >
-                  <option value="" disabled>
-                    Välj förening…
-                  </option>
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                      {o.city ? ` (${o.city})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button type="submit">Skicka förfrågan</Button>
-            </form>
+        <CardContent>
+          {session ? (
+            <OrganizationForm defaultEmail={session.email ?? ""} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Det finns inga godkända föreningar ännu. Registrera din förening nedan.
-            </p>
+            <SignupForm action={signUpOrganization} submitLabel="Registrera förening">
+              <fieldset className="grid gap-4 border-t pt-4">
+                <legend className="pr-2 text-sm font-medium">Föreningen</legend>
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Föreningens namn</Label>
+                  <Input id="name" name="name" autoComplete="organization" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="city">Ort</Label>
+                  <Input id="city" name="city" autoComplete="address-level2" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact_email">Föreningens kontakt-e-post</Label>
+                  <Input id="contact_email" name="contact_email" type="email" />
+                  <p className="text-xs text-muted-foreground">
+                    Lämna tomt för att använda din e-post.
+                  </p>
+                </div>
+              </fieldset>
+            </SignupForm>
           )}
         </CardContent>
+        {!session && (
+          <CardFooter className="text-sm text-muted-foreground">
+            Har du redan ett konto?&nbsp;
+            <Link href="/logga-in?next=/registrera/forening" className="font-medium text-foreground underline">
+              Logga in
+            </Link>
+          </CardFooter>
+        )}
       </Card>
-
-      <p className="max-w-md text-center text-sm text-muted-foreground">
-        Är du bara domare?{" "}
-        <Link href="/mina-matcher" className="font-medium text-foreground underline">
-          Hoppa över och se dina matcher
-        </Link>
-        .
-      </p>
-
-      {!pending && (
-        <Card className="w-full max-w-md shadow-md">
-          <CardHeader>
-            <CardTitle className="font-display text-xl font-bold uppercase">
-              Eller registrera en ny förening
-            </CardTitle>
-            <CardDescription>
-              Nya föreningar granskas innan de kan skapa sammandrag och anmäla lag.
-              Du blir FöreningsAdmin.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OrganizationForm defaultEmail={session.email ?? ""} />
-          </CardContent>
-        </Card>
-      )}
     </main>
   );
 }

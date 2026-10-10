@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(signIn, undefined);
 
   return (
     <form action={action} className="grid gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div className="grid gap-2">
         <Label htmlFor="email">E-post</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />

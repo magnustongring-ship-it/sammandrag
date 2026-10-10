@@ -16,17 +16,22 @@ export const metadata = { title: "Logga in" };
 export default async function LoginPage({
   searchParams,
 }: PageProps<"/logga-in">) {
-  const session = await getSession();
-  if (session) redirect(homePathFor(session));
+  const { fel, next: nextParam } = await searchParams;
+  // Bara interna sökvägar, t.ex. tillbaka till en inbjudan.
+  const next =
+    typeof nextParam === "string" && nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : undefined;
 
-  const { fel } = await searchParams;
+  const session = await getSession();
+  if (session) redirect(next ?? homePathFor(session));
 
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12">
       <Card className="w-full max-w-sm border-t-4 border-t-primary shadow-md">
         <CardHeader>
           <CardTitle className="font-display text-2xl font-bold uppercase">Logga in</CardTitle>
-          <CardDescription>Logga in med ditt konto för föreningen.</CardDescription>
+          <CardDescription>Logga in som förening, lagledare eller domare.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {fel === "lank" && (
@@ -38,7 +43,7 @@ export default async function LoginPage({
               igen om du inte har bekräftat din e-post.
             </p>
           )}
-          <LoginForm />
+          <LoginForm next={next} />
         </CardContent>
         <CardFooter className="text-sm text-muted-foreground">
           Inget konto?&nbsp;

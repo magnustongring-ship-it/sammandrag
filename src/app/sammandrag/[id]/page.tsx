@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { canManageEvent, getSession } from "@/lib/auth";
+import { canManageEvent, getSession, isOrgAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cancelRegistration } from "@/lib/actions/registrations";
 import {
@@ -65,7 +65,9 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
 
   const classIds = event.event_classes.map((c) => c.id);
   const myOrg = session?.organization;
-  const [{ data: counts }, { data: myRegs }, { data: schedule }] = await Promise.all([
+  const approved = myOrg?.status === "godkand";
+  const orgAdmin = !!session && isOrgAdmin(session);
+  const [{ data: counts }, { data: myRegs }, { data: schedule }, { data: orgTeams }, { data: myTeams }] = await Promise.all([
     supabase.rpc("event_class_counts", { p_event_ids: [id] }),
     myOrg && classIds.length > 0
       ? supabase
@@ -77,7 +79,18 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
           .order("created_at")
       : Promise.resolve({ data: [] as Tables<"registrations">[] }),
     supabase.from("event_schedules").select("published").eq("event_id", id).maybeSingle(),
+    approved
+      ? supabase.from("teams").select("id, name").eq("organization_id", myOrg.id).order("name")
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    approved
+      ? supabase.from("team_admins").select("team_id").eq("user_id", session!.userId)
+      : Promise.resolve({ data: [] as { team_id: string }[] }),
   ]);
+  // LagAdmin anmäler och avanmäler sina egna lag, FöreningsAdmin alla föreningens.
+  const myTeamIds = new Set((myTeams ?? []).map((t) => t.team_id));
+  const registerableTeams = (orgTeams ?? []).filter((t) => orgAdmin || myTeamIds.has(t.id));
+  const canCancel = (r: Tables<"registrations">) =>
+    orgAdmin || r.registered_by === session?.userId || (!!r.team_id && myTeamIds.has(r.team_id));
   // Arrangören kan läsa ett opublicerat schema, men det visas bara när det är publicerat.
   const scheduleMatches = schedule?.published
     ? (await getScheduleMatches(supabase, id)).matches
@@ -254,7 +267,7 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
                     {r.contact_phone}
                   </p>
                 </div>
-                {open && (
+                {open && canCancel(r) && (
                   <ConfirmButton
                     action={cancelRegistration.bind(null, r.id)}
                     label="Avanmäl"
@@ -287,14 +300,32 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
                 Logga in
               </Link>{" "}
               för att anmäla lag. Ny förening?{" "}
-              <Link href="/registrera" className="font-medium underline">
+              <Link href="/registrera/forening" className="font-medium underline">
                 Registrera er här
               </Link>
               .
             </p>
-          ) : myOrg?.status !== "godkand" ? (
+          ) : !myOrg ? (
+            <p className="text-sm text-muted-foreground">
+              Lag anmäls av föreningens FöreningsAdmin eller lagets LagAdmin.
+            </p>
+          ) : !approved ? (
             <p className="text-sm text-muted-foreground">
               Din förening måste vara godkänd innan ni kan anmäla lag.
+            </p>
+          ) : registerableTeams.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {orgAdmin ? (
+                <>
+                  Föreningen har inga lag ännu.{" "}
+                  <Link href="/lag" className="font-medium text-foreground underline">
+                    Lägg upp föreningens lag
+                  </Link>{" "}
+                  först.
+                </>
+              ) : (
+                "Du är inte LagAdmin för något lag. Be din förenings FöreningsAdmin om en inbjudan."
+              )}
             </p>
           ) : classes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -304,9 +335,10 @@ export default async function EventPage({ params }: PageProps<"/sammandrag/[id]"
             <RegisterForm
               eventId={event.id}
               classes={classes}
+              teams={registerableTeams}
               defaults={{
                 classId: classes.length === 1 ? classes[0].id : "",
-                teamName: "",
+                teamIds: registerableTeams.length === 1 ? [registerableTeams[0].id] : [],
                 contactEmail: session.email ?? "",
                 contactPhone: "",
               }}

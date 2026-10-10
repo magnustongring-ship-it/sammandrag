@@ -36,9 +36,18 @@ function field(formData: FormData, name: string): string {
   return String(formData.get(name) ?? "").trim();
 }
 
-export async function signUp(
-  _prev: FormState,
+/** Intern sökväg att skicka användaren till, eller null (inga öppna omdirigeringar). */
+function safeNext(value: FormDataEntryValue | null): string | null {
+  const next = String(value ?? "");
+  return next.startsWith("/") && !next.startsWith("//") ? next : null;
+}
+
+// Skapar kontot. Kontotyp och föreningsuppgifter sparas i metadata, och
+// databasen (handle_new_user) skapar profilen och eventuell förening.
+async function createAccount(
   formData: FormData,
+  metadata: Record<string, string>,
+  next: string,
 ): Promise<FormState> {
   const fullName = field(formData, "full_name");
   const email = field(formData, "email");
@@ -55,8 +64,8 @@ export async function signUp(
     email,
     password,
     options: {
-      data: { full_name: fullName },
-      emailRedirectTo: `${origin}/auth/callback?next=/registrera/forening`,
+      data: { full_name: fullName, ...metadata },
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -69,11 +78,54 @@ export async function signUp(
   }
 
   // Om e-postbekräftelse är avstängd blir man inloggad direkt.
-  if (data.session) redirect("/registrera/forening");
+  if (data.session) {
+    revalidatePath("/", "layout");
+    redirect(next);
+  }
 
   return {
     message: `Vi har skickat ett bekräftelsemejl till ${email}. Klicka på länken i mejlet för att fortsätta.`,
   };
+}
+
+/** Registrering som domare: konto utan förening. */
+export async function signUpReferee(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return createAccount(formData, { account_type: "domare" }, "/mina-matcher");
+}
+
+/** Registrering av förening: kontot och föreningen skapas på en gång. */
+export async function signUpOrganization(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const orgName = field(formData, "name");
+  const city = field(formData, "city");
+  const contactEmail = field(formData, "contact_email") || field(formData, "email");
+  if (!orgName || !city) return { error: "Fyll i föreningens namn och ort." };
+
+  return createAccount(
+    formData,
+    {
+      account_type: "forening",
+      org_name: orgName,
+      org_city: city,
+      org_contact_email: contactEmail,
+    },
+    "/vantar-pa-godkannande",
+  );
+}
+
+/** Registrering via en inbjudan från FöreningsAdmin. */
+export async function signUpInvited(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = field(formData, "token");
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return { error: "Ogiltig inbjudan." };
+  return createAccount(formData, { account_type: "inbjudan" }, `/inbjudan/${token}`);
 }
 
 export async function signIn(
@@ -93,11 +145,7 @@ export async function signIn(
 
   const session = await getSession();
   revalidatePath("/", "layout");
-  // Utan förening (t.ex. en domare) finns inget föreningssteg att tvinga fram.
-  if (session && !session.organization && session.profile.role !== "superadmin") {
-    redirect("/mina-matcher");
-  }
-  redirect(session ? homePathFor(session) : "/");
+  redirect(safeNext(formData.get("next")) ?? (session ? homePathFor(session) : "/"));
 }
 
 export async function signOut(): Promise<void> {

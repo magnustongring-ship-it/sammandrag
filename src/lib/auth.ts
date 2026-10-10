@@ -3,7 +3,6 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/database.types";
-import { isUserRole } from "@/lib/roles";
 
 export type Session = {
   userId: string;
@@ -44,7 +43,7 @@ export const isSuperAdmin = (session: Session) => session.profile.role === "supe
 
 /** FöreningsAdmin eller SuperAdmin. */
 export const isOrgAdmin = (session: Session) =>
-  isUserRole(session.profile.role) && session.profile.role !== "lagadmin";
+  session.profile.role === "foreningsadmin" || session.profile.role === "superadmin";
 
 /** Får användaren hantera sammandrag som arrangeras av föreningen? */
 export function canManageEvent(session: Session, organizerOrgId: string): boolean {
@@ -54,7 +53,9 @@ export function canManageEvent(session: Session, organizerOrgId: string): boolea
 // Vart en inloggad användare ska skickas utifrån föreningens status.
 export function homePathFor(session: Session): string {
   if (!session.organization) {
-    return isSuperAdmin(session) ? "/admin" : "/registrera/forening";
+    if (isSuperAdmin(session)) return "/admin";
+    // Domare (och den som saknar förening) ser sina matcher.
+    return "/mina-matcher";
   }
   if (session.organization.status !== "godkand") {
     return "/vantar-pa-godkannande";

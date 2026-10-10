@@ -79,3 +79,27 @@ export function organizerEmail(d: RegistrationEmailData) {
     ].join("\n"),
   };
 }
+
+export function teamInvitationEmail(d: {
+  url: string;
+  teamName: string;
+  clubName: string;
+  invitedBy: string;
+}) {
+  return {
+    subject: `Inbjudan: bli LagAdmin för ${d.teamName}`,
+    text: [
+      "Hej!",
+      "",
+      `${d.invitedBy} har bjudit in dig att bli LagAdmin för ${d.teamName} i ${d.clubName}.`,
+      "Som LagAdmin anmäler du laget till sammandrag i Easy Basket planeraren.",
+      "",
+      "Skapa ett konto eller logga in via länken nedan. Länken gäller i 14 dagar:",
+      d.url,
+      "",
+      "Svara på det här mejlet om du har frågor.",
+      "",
+      "/Easy Basket planeraren",
+    ].join("\n"),
+  };
+}

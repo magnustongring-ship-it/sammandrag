@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, isOrgAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { genderLabel, todayInStockholm } from "@/lib/calendar";
 import {
@@ -21,7 +21,7 @@ import { friendlyError } from "@/lib/errors";
 
 export type RegisterValues = {
   classId: string;
-  teamName: string;
+  teamIds: string[];
   contactEmail: string;
   contactPhone: string;
 };
@@ -30,6 +30,9 @@ export type RegisterState =
   | { error?: string; message?: string; values: RegisterValues }
   | undefined;
 
+// Anmäler ett eller flera av föreningens lag till en klass. LagAdmin får
+// anmäla sina egna lag, FöreningsAdmin alla föreningens lag (databasen
+// kontrollerar det också, se can_register_team).
 export async function registerTeam(
   _prev: RegisterState,
   formData: FormData,
@@ -38,7 +41,7 @@ export async function registerTeam(
   const eventId = String(formData.get("event_id") ?? "");
   const values: RegisterValues = {
     classId: String(formData.get("class_id") ?? ""),
-    teamName: String(formData.get("team_name") ?? "").trim(),
+    teamIds: [...new Set(formData.getAll("team_id").map(String).filter(Boolean))],
     contactEmail: String(formData.get("contact_email") ?? "").trim(),
     contactPhone: String(formData.get("contact_phone") ?? "").trim(),
   };
@@ -51,8 +54,7 @@ export async function registerTeam(
   }
 
   if (!values.classId) return fail("Välj klass.");
-  if (!values.teamName) return fail("Ange lagnamn.");
-  if (values.teamName.length > 100) return fail("Lagnamnet är för långt.");
+  if (values.teamIds.length === 0) return fail("Välj minst ett lag.");
   if (!EMAIL_PATTERN.test(values.contactEmail)) {
     return fail("Ange en giltig e-postadress till kontaktpersonen.");
   }
@@ -61,37 +63,63 @@ export async function registerTeam(
   }
 
   const supabase = await createClient();
-  const { data: cls } = await supabase
-    .from("event_classes")
-    .select(
-      "id, gender, age_groups(name), events(status, title, event_date, start_time, end_time, venue_name, city, registration_deadline, organizations(name, contact_email))",
-    )
-    .eq("id", values.classId)
-    .eq("event_id", eventId)
-    .maybeSingle();
+  const [{ data: cls }, { data: teams }, { data: mine }] = await Promise.all([
+    supabase
+      .from("event_classes")
+      .select(
+        "id, gender, age_groups(name), events(status, title, event_date, start_time, end_time, venue_name, city, registration_deadline, organizations(name, contact_email))",
+      )
+      .eq("id", values.classId)
+      .eq("event_id", eventId)
+      .maybeSingle(),
+    supabase
+      .from("teams")
+      .select("id, name")
+      .eq("organization_id", session.organization.id)
+      .in("id", values.teamIds),
+    supabase.from("team_admins").select("team_id").eq("user_id", session.userId),
+  ]);
   if (!cls?.events) return fail("Klassen hittades inte.");
   if (!isRegistrationOpen(cls.events, todayInStockholm())) {
     return fail("Anmälan till det här sammandraget är stängd.");
   }
+  if (!teams || teams.length !== values.teamIds.length) return fail("Laget hittades inte.");
+  const myTeamIds = new Set((mine ?? []).map((t) => t.team_id));
+  if (!isOrgAdmin(session) && teams.some((t) => !myTeamIds.has(t.id))) {
+    return fail("Du kan bara anmäla lag som du är LagAdmin för.");
+  }
 
-  // Lägg till klassens förkortning efter lagnamnet, t.ex. "Borlänge Basket PU8".
-  const teamName = teamNameWithClass(
-    values.teamName,
-    classSuffix(cls.gender, cls.age_groups?.name ?? ""),
-  );
+  // Lagnamn med klassens förkortning, t.ex. "Borlänge Basket PU8".
+  const suffix = classSuffix(cls.gender, cls.age_groups?.name ?? "");
+  const nameById = new Map(teams.map((t) => [t.id, teamNameWithClass(t.name, suffix)]));
 
+  const { data: existing } = await supabase
+    .from("registrations")
+    .select("team_id")
+    .eq("event_class_id", values.classId)
+    .in("team_id", values.teamIds)
+    .neq("status", "avanmald");
+  if (existing?.length) {
+    const names = existing.map((r) => nameById.get(r.team_id!)).join(", ");
+    return fail(`Redan anmält till klassen: ${names}.`);
+  }
+
+  // I den ordning lagen valdes, så att väntelistan blir förutsägbar.
+  const orgId = session.organization.id;
   const { data, error } = await supabase
     .from("registrations")
-    .insert({
-      event_class_id: values.classId,
-      organization_id: session.organization.id,
-      registered_by: session.userId,
-      team_name: teamName,
-      contact_email: values.contactEmail,
-      contact_phone: values.contactPhone,
-    })
-    .select("status")
-    .single();
+    .insert(
+      values.teamIds.map((teamId) => ({
+        event_class_id: values.classId,
+        organization_id: orgId,
+        registered_by: session.userId,
+        team_id: teamId,
+        team_name: nameById.get(teamId)!,
+        contact_email: values.contactEmail,
+        contact_phone: values.contactPhone,
+      })),
+    )
+    .select("team_name, status");
 
   if (error) {
     return fail(friendlyError(error, "Kunde inte anmäla laget"));
@@ -104,48 +132,60 @@ export async function registerTeam(
   // Bekräftelsemejl skickas efter svaret så att anmälan aldrig väntar på dem.
   const origin = (await headers()).get("origin") ?? "";
   const ev = cls.events;
-  const mail = {
-    url: `${origin}/sammandrag/${eventId}`,
-    teamName,
-    clubName: session.organization.name,
-    classLabel: `${cls.age_groups?.name ?? "?"} ${genderLabel[cls.gender].toLowerCase()}`,
-    waitlisted: data.status === "vantelista",
-    contactEmail: values.contactEmail,
-    contactPhone: values.contactPhone,
-    event: {
-      title: ev.title,
-      date: ev.event_date,
-      startTime: ev.start_time,
-      endTime: ev.end_time,
-      venue: ev.venue_name,
-      city: ev.city,
-      lastDay: lastRegistrationDay(ev),
-      organizer: ev.organizations?.name ?? "",
-    },
-  };
   const organizerAddress = ev.organizations?.contact_email;
+  const clubName = session.organization.name;
+  const classLabel = `${cls.age_groups?.name ?? "?"} ${genderLabel[cls.gender].toLowerCase()}`;
   after(async () => {
-    await sendEmail({
-      to: values.contactEmail,
-      replyTo: organizerAddress,
-      ...registrantEmail(mail),
-    });
-    if (organizerAddress) {
+    for (const reg of data) {
+      const mail = {
+        url: `${origin}/sammandrag/${eventId}`,
+        teamName: reg.team_name,
+        clubName,
+        classLabel,
+        waitlisted: reg.status === "vantelista",
+        contactEmail: values.contactEmail,
+        contactPhone: values.contactPhone,
+        event: {
+          title: ev.title,
+          date: ev.event_date,
+          startTime: ev.start_time,
+          endTime: ev.end_time,
+          venue: ev.venue_name,
+          city: ev.city,
+          lastDay: lastRegistrationDay(ev),
+          organizer: ev.organizations?.name ?? "",
+        },
+      };
       await sendEmail({
-        to: organizerAddress,
-        replyTo: values.contactEmail,
-        ...organizerEmail({ ...mail, url: `${origin}/arrangor/${eventId}` }),
+        to: values.contactEmail,
+        replyTo: organizerAddress,
+        ...registrantEmail(mail),
       });
+      if (organizerAddress) {
+        await sendEmail({
+          to: organizerAddress,
+          replyTo: values.contactEmail,
+          ...organizerEmail({ ...mail, url: `${origin}/arrangor/${eventId}` }),
+        });
+      }
     }
   });
 
+  const registered = data.filter((r) => r.status !== "vantelista").map((r) => r.team_name);
+  const waitlisted = data.filter((r) => r.status === "vantelista").map((r) => r.team_name);
+  const message = [
+    registered.length > 0 &&
+      `${registered.join(", ")} ${registered.length === 1 ? "är anmält" : "är anmälda"}!`,
+    waitlisted.length > 0 &&
+      `${waitlisted.join(", ")} står på väntelistan och flyttas upp automatiskt om en plats blir ledig.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return {
-    message:
-      data.status === "vantelista"
-        ? `${teamName} står på väntelistan. Laget flyttas upp automatiskt om en plats blir ledig.`
-        : `${teamName} är anmält!`,
+    message,
     // Behåll klass och kontaktuppgifter så att det går snabbt att anmäla fler lag.
-    values: { ...values, teamName: "" },
+    values: { ...values, teamIds: [] },
   };
 }
 
