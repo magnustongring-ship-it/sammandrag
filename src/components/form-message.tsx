@@ -1,6 +1,8 @@
-import type { FormState } from "@/lib/actions/auth";
-
-export function FormMessage({ state }: { state: FormState }) {
+export function FormMessage({
+  state,
+}: {
+  state: { error?: string; message?: string } | undefined;
+}) {
   if (state?.error) {
     return (
       <p

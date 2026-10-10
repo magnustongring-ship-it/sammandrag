@@ -2,8 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, homePathFor } from "@/lib/auth";
 import { signUpOrganization } from "@/lib/actions/auth";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -40,26 +38,23 @@ export default async function OrganizationSignupPage() {
           {session ? (
             <OrganizationForm defaultEmail={session.email ?? ""} />
           ) : (
-            <SignupForm action={signUpOrganization} submitLabel="Registrera förening">
-              <fieldset className="grid gap-4 border-t pt-4">
-                <legend className="pr-2 text-sm font-medium">Föreningen</legend>
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Föreningens namn</Label>
-                  <Input id="name" name="name" autoComplete="organization" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="city">Ort</Label>
-                  <Input id="city" name="city" autoComplete="address-level2" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="contact_email">Föreningens kontakt-e-post</Label>
-                  <Input id="contact_email" name="contact_email" type="email" />
-                  <p className="text-xs text-muted-foreground">
-                    Lämna tomt för att använda din e-post.
-                  </p>
-                </div>
-              </fieldset>
-            </SignupForm>
+            <SignupForm
+              action={signUpOrganization}
+              submitLabel="Registrera förening"
+              extra={{
+                legend: "Föreningen",
+                fields: [
+                  { name: "name", label: "Föreningens namn", autoComplete: "organization", required: true },
+                  { name: "city", label: "Ort", autoComplete: "address-level2", required: true },
+                  {
+                    name: "contact_email",
+                    label: "Föreningens kontakt-e-post",
+                    type: "email",
+                    hint: "Lämna tomt för att använda din e-post.",
+                  },
+                ],
+              }}
+            />
           )}
         </CardContent>
         {!session && (

@@ -6,8 +6,20 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, homePathFor } from "@/lib/auth";
 import { friendlyError } from "@/lib/errors";
+import { EMAIL_PATTERN } from "@/lib/registration";
 
-export type FormState = { error?: string; message?: string } | undefined;
+export type FormState =
+  | {
+      error?: string;
+      message?: string;
+      /** Fel per fält, nyckel = fältets name */
+      fieldErrors?: Record<string, string>;
+      /** Det användaren skrev in (utom lösenord), så att inget töms vid fel */
+      values?: Record<string, string>;
+    }
+  | undefined;
+
+type FieldErrors = Record<string, string>;
 
 // Översätter Supabase Auths felkoder till svenska.
 function authErrorMessage(code: string | undefined, fallback: string): string {
@@ -42,21 +54,83 @@ function safeNext(value: FormDataEntryValue | null): string | null {
   return next.startsWith("/") && !next.startsWith("//") ? next : null;
 }
 
+/** Alla ifyllda textfält utom lösenord, för att fylla i formuläret igen vid fel. */
+function enteredValues(formData: FormData): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const [name, value] of formData) {
+    if (typeof value === "string" && !name.startsWith("password") && !name.startsWith("$")) {
+      values[name] = value;
+    }
+  }
+  return values;
+}
+
+function invalid(formData: FormData, fieldErrors: FieldErrors, error?: string): FormState {
+  return {
+    error: error ?? "Kontrollera de markerade fälten.",
+    fieldErrors,
+    values: enteredValues(formData),
+  };
+}
+
+// Supabase Auths fel som gäller ett visst fält.
+function authFieldError(code: string | undefined): FieldErrors {
+  switch (code) {
+    case "user_already_exists":
+    case "email_exists":
+    case "email_address_invalid":
+      return { email: authErrorMessage(code, "") };
+    case "weak_password":
+      return { password: authErrorMessage(code, "") };
+    default:
+      return {};
+  }
+}
+
+// Kontrollerar kontots fält: namn, e-post och lösenord två gånger.
+function accountErrors(formData: FormData): FieldErrors {
+  const errors: FieldErrors = {};
+  const email = field(formData, "email");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("password_confirm") ?? "");
+
+  if (!field(formData, "full_name")) errors.full_name = "Fyll i ditt namn.";
+  if (!email) errors.email = "Fyll i din e-postadress.";
+  else if (!EMAIL_PATTERN.test(email)) errors.email = "Ogiltig e-postadress, t.ex. namn@exempel.se.";
+  if (password.length < 8) errors.password = "Lösenordet måste vara minst 8 tecken.";
+  if (!confirm) errors.password_confirm = "Upprepa lösenordet.";
+  else if (confirm !== password) errors.password_confirm = "Lösenorden är inte likadana.";
+  return errors;
+}
+
+// Kontrollerar föreningens fält. Kontakt-e-posten får vara tom om `optionalEmail`.
+function organizationErrors(formData: FormData, optionalEmail: boolean): FieldErrors {
+  const errors: FieldErrors = {};
+  const contactEmail = field(formData, "contact_email");
+  if (!field(formData, "name")) errors.name = "Fyll i föreningens namn.";
+  if (!field(formData, "city")) errors.city = "Fyll i ort.";
+  if (!contactEmail) {
+    if (!optionalEmail) errors.contact_email = "Fyll i föreningens kontakt-e-post.";
+  } else if (!EMAIL_PATTERN.test(contactEmail)) {
+    errors.contact_email = "Ogiltig e-postadress, t.ex. kansli@forening.se.";
+  }
+  return errors;
+}
+
 // Skapar kontot. Kontotyp och föreningsuppgifter sparas i metadata, och
 // databasen (handle_new_user) skapar profilen och eventuell förening.
 async function createAccount(
   formData: FormData,
   metadata: Record<string, string>,
   next: string,
+  extraErrors: FieldErrors = {},
 ): Promise<FormState> {
+  const errors = { ...accountErrors(formData), ...extraErrors };
+  if (Object.keys(errors).length > 0) return invalid(formData, errors);
+
   const fullName = field(formData, "full_name");
   const email = field(formData, "email");
   const password = String(formData.get("password") ?? "");
-
-  if (!fullName || !email) return { error: "Fyll i namn och e-postadress." };
-  if (password.length < 8) {
-    return { error: "Lösenordet måste vara minst 8 tecken." };
-  }
 
   const origin = (await headers()).get("origin") ?? "";
   const supabase = await createClient();
@@ -69,12 +143,18 @@ async function createAccount(
     },
   });
 
-  if (error) return { error: authErrorMessage(error.code, error.message) };
+  if (error) {
+    return invalid(formData, authFieldError(error.code), authErrorMessage(error.code, error.message));
+  }
 
   // Med e-postbekräftelse påslagen returnerar Supabase inget fel för en
   // redan registrerad adress, men användaren saknar då identiteter.
   if (data.user && data.user.identities?.length === 0) {
-    return { error: authErrorMessage("user_already_exists", "") };
+    return invalid(
+      formData,
+      authFieldError("user_already_exists"),
+      authErrorMessage("user_already_exists", ""),
+    );
   }
 
   // Om e-postbekräftelse är avstängd blir man inloggad direkt.
@@ -101,20 +181,16 @@ export async function signUpOrganization(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const orgName = field(formData, "name");
-  const city = field(formData, "city");
-  const contactEmail = field(formData, "contact_email") || field(formData, "email");
-  if (!orgName || !city) return { error: "Fyll i föreningens namn och ort." };
-
   return createAccount(
     formData,
     {
       account_type: "forening",
-      org_name: orgName,
-      org_city: city,
-      org_contact_email: contactEmail,
+      org_name: field(formData, "name"),
+      org_city: field(formData, "city"),
+      org_contact_email: field(formData, "contact_email") || field(formData, "email"),
     },
     "/vantar-pa-godkannande",
+    organizationErrors(formData, true),
   );
 }
 
@@ -124,7 +200,9 @@ export async function signUpInvited(
   formData: FormData,
 ): Promise<FormState> {
   const token = field(formData, "token");
-  if (!/^[0-9a-f-]{36}$/i.test(token)) return { error: "Ogiltig inbjudan." };
+  if (!/^[0-9a-f-]{36}$/i.test(token)) {
+    return { error: "Ogiltig inbjudan.", values: enteredValues(formData) };
+  }
   return createAccount(formData, { account_type: "inbjudan" }, `/inbjudan/${token}`);
 }
 
@@ -159,12 +237,11 @@ export async function createOrganization(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const errors = organizationErrors(formData, false);
+  if (Object.keys(errors).length > 0) return invalid(formData, errors);
   const name = field(formData, "name");
   const city = field(formData, "city");
   const contactEmail = field(formData, "contact_email");
-  if (!name || !city || !contactEmail) {
-    return { error: "Fyll i föreningens namn, ort och kontakt-e-post." };
-  }
 
   const session = await getSession();
   if (!session) redirect("/logga-in");
@@ -176,7 +253,12 @@ export async function createOrganization(
     p_city: city,
     p_contact_email: contactEmail,
   });
-  if (error) return { error: friendlyError(error, "Kunde inte registrera föreningen") };
+  if (error) {
+    return {
+      error: friendlyError(error, "Kunde inte registrera föreningen"),
+      values: enteredValues(formData),
+    };
+  }
 
   // Spara namnet från registreringen på profilen (bara full_name får ändras).
   const {
